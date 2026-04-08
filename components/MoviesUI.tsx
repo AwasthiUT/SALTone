@@ -25,7 +25,7 @@ export default function MoviesUI({ movies }: Props) {
     <main className="relative h-screen w-full overflow-y-auto bg-black">
 
       {/* HEADER */}
-      <div className="absolute top-[5vh] left-1/2 transform -translate-x-1/2 z-10 px-6">
+      <div className="absolute top-[5vh] left-1/2 transform -translate-x-1/2 z-10 px-6 fade-in-up">
         <p className="text-3xl text-[#FF0000]">
           Directed by <span>Utkarsh Awasthi</span>
         </p>
@@ -34,8 +34,8 @@ export default function MoviesUI({ movies }: Props) {
       {/* GRID */}
       <div className="container mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 py-12 mt-20">
 
-        {movies?.map((video) => (
-          <div key={video.id} className="relative group flex flex-col items-center w-full max-w-sm">
+        {movies?.map((video, idx) => (
+          <div key={video.id} className="fade-in-up relative group flex flex-col items-center w-full max-w-sm" style={{ animationDelay: `${idx * 150}ms` }}>
 
             <a href={video.link} target="_blank" rel="noopener noreferrer" className="relative w-full overflow-hidden shadow-lg">
 
@@ -65,16 +65,6 @@ export default function MoviesUI({ movies }: Props) {
             </p>
 
             {/* BUTTON */}
-            {/* <button
-              onClick={() =>
-                router.push(
-                  `/gallery?title=${encodeURIComponent(video.title)}&images=${encodeURIComponent(JSON.stringify(video.gallery))}&credits=${encodeURIComponent(video.credits.join(', '))}`
-                )
-              }
-              className="px-4 py-2 text-sm text-white hover:bg-[#FF0000] hover:text-black transition"
-            >
-              View Gallery
-            </button> */}
             <Link href={`/gallery/${video.id}`}>
               <button className="px-4 py-2 text-sm text-white hover:bg-[#FF0000] hover:text-black transition">
                 View Gallery

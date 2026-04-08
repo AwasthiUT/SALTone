@@ -14,7 +14,7 @@ export default function GalleryView({ Title, images, Credits }: Props) {
     <main className="min-h-screen overflow-y-auto bg-black text-white p-8">
       <Link href="/movies">
         <h1
-          className="text-3xl mb-6 text-center animate-fade-in-up text-[#FF0000]"
+          className="text-3xl mb-6 text-center animate-fade-in-up text-[#FF0000] fade-in-up"
           style={{ fontFamily: 'CormorantGaramondNormal' }}
         >
           {Title}
@@ -29,7 +29,8 @@ export default function GalleryView({ Title, images, Credits }: Props) {
             alt={`Gallery image ${idx}`}
             width={800}
             height={600}
-            className="rounded-md object-contain w-full h-auto animate-fade-in-up"
+            className="rounded-md object-contain w-full h-auto animate-fade-in-up fade-in-up"
+            style={{ animationDelay: `${idx * 150}ms` }}
             priority={idx === 0}
           />
         ))}
