@@ -13,6 +13,7 @@ type Movie = {
   link: string
   gallery: string[]
   credits: string[]
+  is_active: boolean
 }
 type Props = {
   movies: Movie[]
@@ -34,7 +35,7 @@ export default function MoviesUI({ movies }: Props) {
       {/* GRID */}
       <div className="container mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 py-12 mt-20">
 
-        {movies?.map((video, idx) => (
+        {movies?.filter((movie) => movie.is_active).map((video, idx) => (
           <div key={video.id} className="fade-in-up relative group flex flex-col items-center w-full max-w-sm" style={{ animationDelay: `${idx * 150}ms` }}>
 
             <a href={video.link} target="_blank" rel="noopener noreferrer" className="relative w-full overflow-hidden shadow-lg">

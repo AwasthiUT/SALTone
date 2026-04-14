@@ -17,7 +17,7 @@ export async function getGallery(movieId: number) {
     .eq('movie_id', movieId)
     // .order('order')
 
-  console.log('images:', images, 'galleryError:', galleryError)
+  // console.log('images:', images, 'galleryError:', galleryError)
 
   if (movieError || galleryError) throw new Error('Failed to fetch gallery')
 

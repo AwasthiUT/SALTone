@@ -1,0 +1,4 @@
+yearUI3 - perfect in all conditions - but now is failing when theres a vertical picture is theres
+YearUI2 - to standard - not random - more structured random - mid one all bg (or left or right)
+YearUI1 - netflix style layout - parent id and order does matter (not sure about order)
+

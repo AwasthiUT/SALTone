@@ -104,7 +104,8 @@ export default function Home() {
 
         <div className="relative h-screen w-full text-white">
           <Link
-            href="/movies"
+            // href="/movies"
+            href='/years/2023'
             className="group absolute bottom-[5vh] right-[1vw] z-20 translate-x-[30%] translate-y-[30%] transition-transform duration-300 hover:scale-105"
           >
             <motion.img
