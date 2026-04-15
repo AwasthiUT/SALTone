@@ -11,7 +11,16 @@ type Props = {
 
 export default function GalleryView({ Title, images, Credits }: Props) {
   return (
-    <main className="min-h-screen overflow-y-auto bg-black text-white p-8">
+    <main className="min-h-screen overflow-y-auto bg-black text-white p-8 relative">
+      <div className="absolute top-8 left-8 z-50">
+        <Link 
+          href="/movies"
+          className="text-white hover:text-[#FF0000] transition-colors flex items-center gap-2 group"
+          style={{ fontFamily: 'HelveticaBold', fontSize: '0.8rem', letterSpacing: '0.1em' }}
+        >
+          <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> BACK
+        </Link>
+      </div>
       <Link href="/movies">
         <h1
           className="text-3xl mb-6 text-center animate-fade-in-up text-[#FF0000] fade-in-up"

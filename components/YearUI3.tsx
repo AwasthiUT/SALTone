@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FaInstagram, FaYoutube, FaLinkedin } from 'react-icons/fa'
+import Link from 'next/link';
 
 // Shared types
 type YearData = {
@@ -183,6 +184,15 @@ export default function YearUI3({ yearData, events }: Props) {
 
       {/* HEADER OVERLAY */}
       <div className="absolute top-0 left-0 w-full z-40 pointer-events-none p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div className="pointer-events-auto mb-4 sm:mb-0">
+          <Link
+            href="/"
+            className="text-black hover:text-[#FF0000] transition-colors flex items-center gap-2 group"
+            style={{ fontFamily: 'HelveticaBold', fontSize: '0.9rem', letterSpacing: '0.1em' }}
+          >
+            <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> BACK
+          </Link>
+        </div>
         {yearData.year_stamp_present && (
           <h1
             className="hidden text-5xl sm:text-7xl text-black opacity-95"

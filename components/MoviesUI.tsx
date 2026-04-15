@@ -25,6 +25,17 @@ export default function MoviesUI({ movies }: Props) {
   return (
     <main className="relative h-screen w-full overflow-y-auto bg-black">
 
+      {/* BACK BUTTON */}
+      <div className="absolute top-6 left-6 z-50">
+        <Link 
+          href="/"
+          className="text-white hover:text-[#FF0000] transition-colors flex items-center gap-2 group"
+          style={{ fontFamily: 'HelveticaBold', fontSize: '0.9rem', letterSpacing: '0.1em' }}
+        >
+          <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> BACK
+        </Link>
+      </div>
+
       {/* HEADER */}
       <div className="absolute top-[5vh] left-1/2 transform -translate-x-1/2 z-10 px-6 fade-in-up">
         <p className="text-3xl text-[#FF0000]">
