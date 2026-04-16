@@ -187,10 +187,11 @@ export default function YearUI3({ yearData, events }: Props) {
         <div className="pointer-events-auto mb-4 sm:mb-0">
           <Link
             href="/"
-            className="text-black hover:text-[#FF0000] transition-colors flex items-center gap-2 group"
-            style={{ fontFamily: 'HelveticaBold', fontSize: '0.9rem', letterSpacing: '0.1em' }}
+            className="group flex items-center gap-3 px-5 py-2.5 bg-white/50 hover:bg-black/5 rounded-full backdrop-blur-md border border-black/10 hover:border-black/30 transition-all duration-300 text-black uppercase text-[10px] sm:text-xs tracking-[0.2em] w-fit"
+            style={{ fontFamily: 'HelveticaBold' }}
           >
-            <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span> BACK
+            <span className="group-hover:-translate-x-1 transition-transform duration-300 inline-block">←</span>
+            <span>All Archives</span>
           </Link>
         </div>
         {yearData.year_stamp_present && (

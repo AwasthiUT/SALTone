@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import ModeToggle from '@/components/landing/ModeToggle'
 import HeroSection from '@/components/landing/HeroSection'
@@ -11,12 +11,31 @@ import { FaInstagram, FaYoutube, FaLinkedin } from 'react-icons/fa'
 
 export default function Home() {
   const [mode, setMode] = useState<'pro' | 'creative'>('pro')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    const savedMode = sessionStorage.getItem('portfolio_mode') as 'pro' | 'creative'
+    if (savedMode === 'pro' || savedMode === 'creative') {
+      setMode(savedMode)
+    }
+  }, [])
+
   const isPro = mode === 'pro'
 
-  const toggle = () => setMode(prev => prev === 'pro' ? 'creative' : 'pro')
+  const toggle = () => {
+    setMode(prev => {
+      const next = prev === 'pro' ? 'creative' : 'pro'
+      sessionStorage.setItem('portfolio_mode', next)
+      return next
+    })
+  }
 
   return (
-    <main className="relative w-full min-h-screen overflow-x-hidden">
+    <main 
+      className="relative w-full min-h-screen overflow-x-hidden transition-opacity duration-500"
+      style={{ opacity: mounted ? 1 : 0 }}
+    >
 
       {/* ── Fluid background (creative mode only) ── */}
       <AnimatePresence>
