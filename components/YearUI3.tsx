@@ -182,6 +182,14 @@ export default function YearUI3({ yearData, events }: Props) {
   return (
     <main className="relative min-h-screen w-full bg-white text-black overflow-x-hidden selection:bg-black selection:text-white">
 
+      {/* PAGE LOAD TRANSITION OVERLAY */}
+      <motion.div
+        className="fixed inset-0 z-[9999] bg-[#0a0a0a] pointer-events-none"
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.6, ease: "easeInOut" }}
+      />
+
       {/* HEADER OVERLAY */}
       <div className="absolute top-0 left-0 w-full z-40 pointer-events-none p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div className="pointer-events-auto mb-4 sm:mb-0">

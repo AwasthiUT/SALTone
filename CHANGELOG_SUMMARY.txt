@@ -1,0 +1,21 @@
+yearUI3 - perfect in all conditions - but now is failing when theres a vertical picture is theres
+YearUI2 - to standard - not random - more structured random - mid one all bg (or left or right)
+YearUI1 - netflix style layout - parent id and order does matter (not sure about order)
+
+---
+CHANGE: Implementation of Dynamic Background System & Smooth UI Transitions
+DATE: 2026-04-21
+TIME: 23:03 (IST)
+---
+
+---
+CHANGE: Extract Supabase Fetch Logic to Resusable Client Module
+DATE: 2026-04-21
+TIME: 23:16 (IST)
+---
+
+---
+CHANGE: Redistinct Pro Mode Landing Experience (Gates Notes + Sean O'Brien Blend)
+DATE: 2026-04-22
+TIME: 00:43 (IST)
+---

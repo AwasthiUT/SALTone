@@ -1,0 +1,94 @@
+# SALTone Project Updates Log
+
+## Date & Time: 2026-04-21 23:03 (IST)
+## Title: Implementation of Dynamic Background System & Smooth UI Transitions
+
+### 1. Dynamic Background Video System (Supabase Integrated)
+- **What:** Updated `components/landing/VideoBackground.tsx` to fetch video assets dynamically from the Supabase `backgrounds` table.
+- **Why:** To make the site more flexible and allow for backend-controlled background visuals without hardcoding URLs. This supports multiple background options with specific overrides for brightness and blur.
+- **How:** 
+  - Integrated the Supabase browser client to fetch rows where `mode = 'creative'` and `is_active = true`.
+  - Implemented a random selection logic (with simple device-type filtering based on `window.innerWidth`).
+  - Applied CSS `filter` properties (`brightness` and `blur`) dynamically using the values retrieved from the database.
+  - Used a `key={videoUrl}` on the `<video>` element to ensure clean reloads when the source changes.
+
+### 2. Immersive Scroll Behavior
+- **What:** Added a scroll-linked opacity transition to the background video.
+- **Why:** To enhance the visual hierarchy. As the user scrolls down to view content, the video gradually fades out to solid black, making the UI feel more cohesive and less "noisy" during reading.
+- **How:** 
+  - Leveraged Framed Motion's `useScroll` and `useTransform` hooks.
+  - Mapped `scrollY` values from `0` to `600px` to an opacity scale of `1` to `0`.
+
+### 3. Transition Optimization (Landing Page)
+- **What:** Refined the toggle logic between Professional and Creative modes.
+- **Why:** To ensure no flickering or unnecessary unmounting of heavy video components when switching modes.
+- **How:** Kept `VideoBackground` always mounted but controlled its visibility via Framer Motion's `animate={{ opacity: isVisible ? 1 : 0 }}`.
+
+### 4. Year Page Transition Fix (UX Improvement)
+- **What:** Eliminated the "white flash" when navigating to year-specific pages (`/years/[year]`).
+- **Why:** The landing page is predominantly dark, but the year pages use a white background. Navigating between them was abrupt.
+- **How:** 
+  - Modified `components/YearUI3.tsx` to include a high-z-index dark overlay (`#0a0a0a`).
+  - Set the overlay to animate from `opacity: 1` to `opacity: 0` on mount (duration: 600ms).
+  - This creates a smooth "fade-to-white" effect that feels intentional rather than a browser loading glitch.
+
+---
+
+## Date & Time: 2026-04-21 23:16 (IST)
+## Title: Extract Supabase Fetch Logic to Resusable Client Module
+
+### 1. Extracted Data Fetching Service (`lib/supabase/backgrounds.ts`)
+- **What:** Created a brand new file `lib/supabase/backgrounds.ts` and ported the background fetching logic from the UI layer. Only fetches row data where `is_active` matches `true`.
+- **Why:** Separating concerns is essential. Keeping raw database interaction (and its data mappings) out of the frontend View logic makes the components cleaner, easier to test, and enables code reusability if other components need to pull background configurations.
+- **How:** 
+  - Standardized the request to target the `Backgrounds` table with an `eq('is_active', true)` filter using the `@/utils/supabase/client` instance.
+  - Added a mapping iteration inside the backend interface to automatically bridge frontend-compliant TypeScript variables matching `BackgroundData` structures, making it much more strongly typed on return.
+
+### 2. Refactored Component (`components/landing/VideoBackground.tsx`)
+- **What:** Replaced the internal inline Supabase fetch with the new `getActiveBackgrounds` service function call.
+- **Why:** Adheres to cleaner architecture. The UI shouldn't configure the `.from()` strings, it should strictly handle display logic. Wait logic handles specific frontend filtering like evaluating device dimension parameters or creative-mode selections.
+- **How:** 
+  - Substituted the `@supabase/ssr` logic within the `useEffect()` closure, resolving the fetched object response securely via a generic try-catch block. 
+  - The mode filtering for `'creative'` and `device_type` checking continues seamlessly using Javascript side filtering.
+
+---
+---
+
+## Date & Time: 2026-04-22 00:43 (IST)
+## Title: Redesign of "Pro Mode" Landing Page Experience
+
+### 1. Unified Pro Mode Architecture (`components/pro/ProLayout.tsx`)
+- **What:** Created a layout wrapper to orchestrate the "Professional" experience.
+- **Why:** To separate the "Creative" and "Professional" visual identities completely while maintaining a single-page feel. This allowed us to inject a specific navbar and hero without cluttering the main `page.tsx`.
+- **How:** Uses `AnimatePresence` to handle smooth cross-fades between the new `HeroPro` and the existing `HeroSection` when the mode toggles.
+
+### 2. Editorial Navbar Redesign (`components/pro/NavbarPro.tsx`)
+- **What:** Replaced the simple mode toggle with a full-width floating "Mode-Aware" glass-morphism navbar.
+- **Why:** The Professional mode required a structured navigation system (Experience, Skills, Roadmap), while the Creative mode needed a separate set of links (Diaries, Archives, etc.).
+- **How:** 
+  - Dynamic link switching based on the current mode.
+  - Custom pill-style toggle switch integrated directly into the navigation bar.
+  - Backdrop blur and border-glow styling for a premium "Apple-style" or "Linear" aesthetic.
+
+### 3. Hybrid Hero Experience (`components/pro/HeroPro.tsx`)
+- **What:** Implemented a new hero section that blends two distinct visual styles:
+  - **Gates Notes Style:** A soft, hand-drawn technological background illustration.
+  - **Sean O'Brien Style:** Bold, massive white typography over a dark gradient overlay.
+- **Why:** To create a landing experience that feels both human/approachable (illustration) and authoritative/precise (bold typography).
+- **How:** 
+  - Layered architecture: Illustration (BG) -> Noise Texture -> Dark Gradient -> Content.
+  - Optimized typography hierarchy with staggering Framer Motion animations.
+  - Fixed a TypeScript "Variants" incompatibility issue by explicitly typing animation objects.
+
+### 4. Automated Asset Generation
+- **What:** Generated a custom tech-themed watercolor seamless background (`public/pro-bg-illustration.png`) using AI.
+- **Why:** To ensure the Gates Notes aesthetic was perfectly matched to the user's specific engineering profile.
+- **How:** Used DALL-E/Imagen via internal tools to generate a soft-creme parchment-style background with tech line art.
+
+### 5. Main Page Integration (`app/page.tsx`)
+- **What:** Cleaned up the root page logic to use the new `ProLayout`.
+- **Why:** To reduce the complexity of `page.tsx` and move mode-specific UI logic into dedicated components.
+- **How:** Replaced the external `ModeToggle` with the new Layout-based navbar flow.
+
+---
+*Note: This file will be updated every time changes are made to the codebase to maintain a clear history of technical decisions.*

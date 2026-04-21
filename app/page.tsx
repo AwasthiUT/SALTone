@@ -1,113 +1,43 @@
-'use client'
+import { createClient } from '@/utils/supabase/server'
+import HomeV2 from './page_v2'
+import HomeV3 from './page_v3'
 
-import { useState, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import ModeToggle from '@/components/landing/ModeToggle'
-import HeroSection from '@/components/landing/HeroSection'
-import VideoBackground from '@/components/landing/VideoBackground'
-import ProfessionalSections from '@/components/landing/ProfessionalSections'
-import CreativeSections from '@/components/landing/CreativeSections'
-import { FaInstagram, FaYoutube, FaLinkedin } from 'react-icons/fa'
+/**
+ * Landing Page Server Orchestrator
+ * 
+ * Dynamically queries the 'SCREEN_VERSIONS' table to determine which landing page
+ * layout to display (e.g., 'v2' or 'v3') based on backend configuration.
+ * 
+ * Falls back to 'v3' (the newest Pro Mode redesign) if fetch fails.
+ */
+export default async function Page() {
+  const supabase = await createClient()
 
-export default function Home() {
-  const [mode, setMode] = useState<'pro' | 'creative'>('pro')
-  const [mounted, setMounted] = useState(false)
+  let version = 'v3' // Default to latest version if query fails
 
-  useEffect(() => {
-    setMounted(true)
-    const savedMode = sessionStorage.getItem('portfolio_mode') as 'pro' | 'creative'
-    if (savedMode === 'pro' || savedMode === 'creative') {
-      setMode(savedMode)
+  try {
+    const { data, error } = await supabase
+      .from('SCREEN_VERSIONS')
+      .select('version')
+      .eq('screen_name', 'landing')
+      // .eq('is_active', true)
+      .single()
+
+    if (!error && data?.version) {
+      version = data.version
+    } else if (error && error.code !== 'PGRST116') {
+      // PGRST116 means no rows found (expected if table is empty)
+      console.warn('Supabase query error when fetching screen version:', error.message)
     }
-  }, [])
-
-  const isPro = mode === 'pro'
-
-  const toggle = () => {
-    setMode(prev => {
-      const next = prev === 'pro' ? 'creative' : 'pro'
-      sessionStorage.setItem('portfolio_mode', next)
-      return next
-    })
+  } catch (err) {
+    console.error('Failed to fetch landing version:', err)
   }
 
-  return (
-    <main 
-      className="relative w-full min-h-screen overflow-x-hidden transition-opacity duration-500"
-      style={{ opacity: mounted ? 1 : 0 }}
-    >
+  // Render previous iteration
+  if (version === 'v2') {
+    return <HomeV2 />
+  }
 
-      {/* ── Video background (always mounted for performance, toggles opacity) ── */}
-      <VideoBackground isVisible={!isPro} />
-
-      {/* ── Solid background (pro mode) — sits behind everything ── */}
-      <motion.div
-        className="fixed inset-0 z-0 pointer-events-none"
-        animate={{
-          backgroundColor: isPro ? '#0a0a0a' : 'transparent',
-        }}
-        transition={{ duration: 0.6 }}
-      />
-
-      {/* ── Toggle ── */}
-      <ModeToggle mode={mode} onToggle={toggle} />
-
-      {/* ── Hero ── */}
-      <HeroSection mode={mode} />
-
-      {/* ── Below-the-fold sections ── */}
-      <AnimatePresence mode="wait">
-        {isPro ? (
-          <motion.div
-            key="professional"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <ProfessionalSections />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="creative"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <CreativeSections />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Footer ── */}
-      <footer className="relative z-10 text-center py-12">
-        <motion.p
-          className="text-sm uppercase tracking-[0.2em] mb-6"
-          animate={{ color: isPro ? 'rgba(255,0,0,0.7)' : 'rgba(255,255,255,0.5)' }}
-          transition={{ duration: 0.5 }}
-          style={{ fontFamily: 'HelveticaBold' }}
-        >
-          Utkarsh Awasthi
-        </motion.p>
-        <div className="flex justify-center space-x-6">
-          {[
-            { href: 'https://www.instagram.com/ut_awasthi/', icon: FaInstagram },
-            { href: 'https://www.youtube.com/@Yousaidut', icon: FaYoutube },
-            { href: 'https://www.linkedin.com/in/utkarsh-awasthi-b35917231/', icon: FaLinkedin },
-          ].map(({ href, icon: Icon }) => (
-            <a
-              key={href}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-white/20 hover:text-[#FF0000] transition-colors duration-300"
-            >
-              <Icon size={22} />
-            </a>
-          ))}
-        </div>
-      </footer>
-    </main>
-  )
+  // Render current iteration
+  return <HomeV3 />
 }
