@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import ModeToggle from '@/components/landing/ModeToggle'
 import HeroSection from '@/components/landing/HeroSection'
-import FluidBackground from '@/components/landing/FluidBackground'
+import VideoBackground from '@/components/landing/VideoBackground'
 import ProfessionalSections from '@/components/landing/ProfessionalSections'
 import CreativeSections from '@/components/landing/CreativeSections'
 import { FaInstagram, FaYoutube, FaLinkedin } from 'react-icons/fa'
@@ -37,10 +37,8 @@ export default function Home() {
       style={{ opacity: mounted ? 1 : 0 }}
     >
 
-      {/* ── Fluid background (creative mode only) ── */}
-      <AnimatePresence>
-        {!isPro && <FluidBackground />}
-      </AnimatePresence>
+      {/* ── Video background (always mounted for performance, toggles opacity) ── */}
+      <VideoBackground isVisible={!isPro} />
 
       {/* ── Solid background (pro mode) — sits behind everything ── */}
       <motion.div
