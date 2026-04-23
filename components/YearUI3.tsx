@@ -90,7 +90,7 @@ function InnerGallery({ event }: { event: LayoutEvent }) {
   }, [event.gallery, event.has_gallery])
 
   return (
-    <div className="w-full grid grid-cols-12 grid-flow-dense gap-2" style={{ gridAutoRows: '3.3vw' }}>
+    <div className="w-full grid grid-cols-6 md:grid-cols-12 grid-flow-dense gap-2 auto-rows-[10vw] md:auto-rows-[5vw] lg:auto-rows-[3.3vw]">
       <motion.div
         layoutId={`event-container-${event.id}`}
         className="relative w-full h-full overflow-hidden shadow-xl"
@@ -220,8 +220,7 @@ export default function YearUI3({ yearData, events }: Props) {
 
       {/* DENSE GRID JIGSAW — gapless, genuinely varied sizes, slight object-cover crop */}
       <div
-        className="pt-36 sm:pt-40 grid grid-cols-12 grid-flow-dense gap-0 bg-white"
-        style={{ gridAutoRows: '5vw' }}
+        className="pt-36 sm:pt-40 grid grid-cols-6 md:grid-cols-12 grid-flow-dense gap-0 bg-white auto-rows-[10vw] md:auto-rows-[5vw]"
       >
         {puzzleItems.map((event, idx) => (
           <div
