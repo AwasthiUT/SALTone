@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -64,6 +64,27 @@ const COL_TO_ROW_FACTOR = (100 / 12) / 5 // ≈ 1.667
 // factor = (66.7/12) / 3.3 ≈ 1.685 — keeps aspect ratio correct inside modal
 const INNER_COL_TO_ROW_FACTOR = (66.7 / 12) / 3.3
 
+const getTitleSize = (col: number) => {
+  if (col >= 6) return 'text-xl sm:text-3xl lg:text-4xl';
+  if (col >= 4) return 'text-lg sm:text-xl lg:text-2xl';
+  if (col >= 3) return 'text-base sm:text-lg lg:text-xl';
+  return 'text-sm sm:text-base lg:text-lg';
+}
+
+const getSubtitleSize = (col: number) => {
+  if (col >= 6) return 'text-xs sm:text-sm lg:text-base';
+  if (col >= 4) return 'text-[10px] sm:text-xs lg:text-sm';
+  if (col >= 3) return 'text-[9px] sm:text-[10px] lg:text-xs';
+  return 'text-[8px] sm:text-[9px] lg:text-[10px]';
+}
+
+const getOverlayPadding = (col: number) => {
+  if (col >= 6) return 'p-4 sm:p-6 lg:p-8';
+  if (col >= 4) return 'p-3 sm:p-5 lg:p-6';
+  if (col >= 3) return 'p-2 sm:p-4 lg:p-5';
+  return 'p-2 sm:p-3 lg:p-4';
+}
+
 function InnerGallery({ event }: { event: LayoutEvent }) {
   const [galleryItems, setGalleryItems] = useState<{ src: string; col: number; row: number }[]>([])
 
@@ -124,6 +145,58 @@ export default function YearUI3({ yearData, events }: Props) {
   const activeEvents = events.filter(e => e.is_active)
 
   const [puzzleItems, setPuzzleItems] = useState<LayoutEvent[]>([])
+  const [isMobile, setIsMobile] = useState(false)
+  const visibleEventIdsRef = useRef<number[]>([])
+  const [mobileActiveId, setMobileActiveId] = useState<number | null>(null)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileActiveId(null)
+      return
+    }
+
+    const interval = setInterval(() => {
+      const visible = visibleEventIdsRef.current
+      if (visible.length === 0) {
+        setMobileActiveId(null)
+        return
+      }
+
+      setMobileActiveId(currentActive => {
+        if (!currentActive) return visible[0]
+        const idx = visible.indexOf(currentActive)
+        if (idx === -1) return visible[0]
+        return visible[(idx + 1) % visible.length]
+      })
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [isMobile])
+
+  const handleViewportEnter = (id: number) => {
+    if (!visibleEventIdsRef.current.includes(id)) {
+      visibleEventIdsRef.current.push(id)
+      setMobileActiveId(current => current === null ? id : current)
+    }
+  }
+
+  const handleViewportLeave = (id: number) => {
+    visibleEventIdsRef.current = visibleEventIdsRef.current.filter(eventId => eventId !== id)
+    setMobileActiveId(current => {
+      if (current === id) {
+        return visibleEventIdsRef.current.length > 0 ? visibleEventIdsRef.current[0] : null
+      }
+      return current
+    })
+  }
+
 
   useEffect(() => {
     const shuffled = [...activeEvents].sort(() => Math.random() - 0.5)
@@ -236,10 +309,19 @@ export default function YearUI3({ yearData, events }: Props) {
             <motion.div
               layoutId={`event-container-${event.id}`}
               onClick={() => setSelectedEvent(event)}
-              whileHover={{ scale: 1.05, zIndex: 30 }}
+              initial="rest"
+              whileHover={!isMobile ? "hover" : undefined}
+              onViewportEnter={() => handleViewportEnter(event.id)}
+              onViewportLeave={() => handleViewportLeave(event.id)}
+              viewport={{ margin: "-25% 0px -25% 0px", amount: "some" }}
+              animate={isMobile ? (mobileActiveId === event.id ? "inView" : "rest") : "rest"}
+              variants={{
+                rest: { scale: 1, zIndex: 10 },
+                hover: { scale: 1.05, zIndex: 30 },
+                inView: { scale: 1, zIndex: 10 }
+              }}
               transition={{ duration: 0.3 }}
-              style={{ zIndex: 10 }}
-              className="relative w-full h-full cursor-pointer group bg-white shadow-sm"
+              className="relative w-full h-full cursor-pointer bg-white shadow-sm"
             >
               {event.cover_image && (
                 <img
@@ -250,22 +332,39 @@ export default function YearUI3({ yearData, events }: Props) {
               )}
 
               {/* Overlay with elegant Title & View Gallery prompt */}
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex flex-col justify-end items-start p-4 sm:p-6 lg:p-8">
-                <h3
-                  className="text-white text-lg sm:text-xl lg:text-2xl translate-y-4 group-hover:translate-y-0 transition-transform duration-500"
+              <motion.div
+                className={`absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none flex flex-col justify-end items-start ${getOverlayPadding(event.col)}`}
+                variants={{
+                  rest: { opacity: 0 },
+                  hover: { opacity: 1, transition: { duration: 0.3 } },
+                  inView: { opacity: 1, transition: { duration: 0.3 } }
+                }}
+              >
+                <motion.h3
+                  className={`text-white leading-tight ${getTitleSize(event.col)}`}
                   style={{ fontFamily: 'HelveticaBold', letterSpacing: '-0.02em' }}
+                  variants={{
+                    rest: { y: 16 },
+                    hover: { y: 0, transition: { duration: 0.5 } },
+                    inView: { y: 0, transition: { duration: 0.5 } }
+                  }}
                 >
                   {event.title}
-                </h3>
+                </motion.h3>
                 {event.has_gallery && (
-                  <p
-                    className="text-white/80 text-[10px] sm:text-xs uppercase tracking-[0.2em] mt-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 delay-75"
+                  <motion.p
+                    className={`text-white/80 uppercase tracking-[0.2em] mt-2 ${getSubtitleSize(event.col)}`}
                     style={{ fontFamily: 'HelveticaBold' }}
+                    variants={{
+                      rest: { y: 16 },
+                      hover: { y: 0, transition: { duration: 0.5, delay: 0.075 } },
+                      inView: { y: 0, transition: { duration: 0.5, delay: 0.075 } }
+                    }}
                   >
                     View Gallery
-                  </p>
+                  </motion.p>
                 )}
-              </div>
+              </motion.div>
             </motion.div>
           </div>
         ))}
