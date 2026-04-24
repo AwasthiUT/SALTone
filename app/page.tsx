@@ -1,6 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import HomeV2 from './page_v2'
 import HomeV3 from './page_v3'
+import HomeV1 from './page_v1'
+import HomeV4 from './page_v4'
 
 /**
  * Landing Page Server Orchestrator
@@ -9,6 +11,7 @@ import HomeV3 from './page_v3'
  * layout to display (e.g., 'v2' or 'v3') based on backend configuration.
  * 
  * Falls back to 'v3' (the newest Pro Mode redesign) if fetch fails.
+ * v4: Split-world landing (creative left / technical right).
  */
 export default async function Page() {
   const supabase = await createClient()
@@ -33,11 +36,17 @@ export default async function Page() {
     console.error('Failed to fetch landing version:', err)
   }
 
-  // Render previous iteration
+  // Render previous iterations
+  if (version === 'v1') {
+    return <HomeV1 />
+  }
   if (version === 'v2') {
     return <HomeV2 />
   }
+  if (version === 'v4') {
+    return <HomeV4 />
+  }
 
-  // Render current iteration
+  // Render current iteration (v3 default)
   return <HomeV3 />
 }

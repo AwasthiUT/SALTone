@@ -6,13 +6,13 @@
  * The primary landing hero for the "Professional Mode". This component blends two distinct 
  * visual philosophies into a single cohesive experience.
  * 
- * 1. Background (Gates Notes inspired): 
- *    Features a soft, tech-themed watercolor illustration background with subtle blurs 
- *    to feel approachable and academic.
+ * 1. Background: 
+ *    Clean, solid dark background with subtle noise texture for a focused, 
+ *    professional look.
  * 
- * 2. Foreground (Sean O'Brien inspired): 
- *    Strong, bold San-Serif typography over a deep dark gradient overlay to command 
- *    authority and focus on engineering precision.
+ * 2. Foreground: 
+ *    Strong, bold San-Serif typography to command authority and focus 
+ *    on engineering precision.
  * 
  * Uses Framer Motion for staggered entrance animations of text elements.
  */
@@ -42,44 +42,9 @@ export default function HeroPro() {
   return (
     <section className="relative w-full min-h-screen overflow-hidden flex flex-col justify-center">
 
-      {/* ── Layer 1: Illustrated background (Gates Notes inspired) ── */}
-      <div className="absolute inset-0 z-0">
-        <div
-          className="absolute inset-0 bg-cover bg-center scale-110"
-          style={{
-            backgroundImage: 'url(/pro-bg-illustration.png)',
-            filter: 'blur(1.5px) saturate(0.8)',
-          }}
-        />
-        {/* Warm overlay to soften the illustration */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(180deg, rgba(245,240,232,0.3) 0%, rgba(245,240,232,0.15) 30%, transparent 60%)',
-          }}
-        />
-      </div>
 
-      {/* ── Layer 2: Dark gradient overlay (Sean O'Brien inspired) ── */}
-      <div className="absolute inset-0 z-[1]">
-        {/* Top fade: subtle, letting illustration peek through */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `
-              linear-gradient(
-                180deg,
-                rgba(0,0,0,0.15) 0%,
-                rgba(0,0,0,0.35) 20%,
-                rgba(0,0,0,0.75) 50%,
-                rgba(0,0,0,0.92) 70%,
-                rgba(0,0,0,0.98) 85%,
-                #000000 100%
-              )
-            `,
-          }}
-        />
-      </div>
+      {/* ── Layer 2: Solid professional background ── */}
+      <div className="absolute inset-0 z-[1] bg-black" />
 
       {/* ── Layer 3: Subtle noise texture ── */}
       <div
