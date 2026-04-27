@@ -91,4 +91,37 @@
 - **How:** Replaced the external `ModeToggle` with the new Layout-based navbar flow.
 
 ---
+
+## Date & Time: 2026-04-27 13:51 (IST)
+## Title: Massive Expansion of Creative & Professional Portfolios
+
+### 1. Professional Page Overhaul (`components/landing/WorkContent.tsx`)
+- **What:** Transformed the single-screen technical landing into a comprehensive professional profile with multiple scrollable sections.
+- **Why:** To move beyond a simple "about" blurb and provide a detailed roadmap of experience, projects, and contact points for professional opportunities.
+- **Sections Added:**
+  - **Currently Building:** A quick-stats bar showing current role, focus, and side projects.
+  - **Stack & Tooling:** Re-integrated the Skill grid with an editorial-style header.
+  - **Experience:** A detailed timeline of previous roles, including tech tags and descriptions.
+  - **Selected Projects:** A clean 2x2 grid featuring live and in-progress work with status badges.
+  - **Contact:** A dedicated grid for reaching out via Email, LinkedIn, etc.
+- **Aesthetic:** Maintained the clean, high-contrast light mode (#f9f9f7) with subtle borders and "HelveticaBold" typography.
+
+### 2. Creative World Expansion (`components/landing/CreativeSections.tsx`)
+- **What:** Completely redesigned the creative world below-the-fold content to be "maximalistic" and cinematic.
+- **Why:** To represent the "creative personality" through a variety of mediums (film, photography, archives) with high-impact visuals and transitions.
+- **Sections Added:**
+  - **Marquee Dividers:** Scrolling text tickers that add motion and energy to the page transitions.
+  - **"Who I Am" Statement:** Giant typography section (up to 10rem) for a bold identity statement.
+  - **Cinema Section:** A cinematic showcase featuring auto-cycling film stills with smooth crossfades and a clickable filmstrip scrubber.
+  - **Photography Masonry:** A staggered, masonry-style grid for still photography with grayscale-to-color hover effects.
+  - **The Archives (2018-2024):** A complete year-by-year archive section with custom cover art for each year.
+  - **Manifesto:** A dedicated space for the "Creative Philosophy" with animated decorative elements.
+- **Aesthetic:** Dark, moody, and immersive (#080808) with heavy use of Framer Motion for scroll-triggered "reveal" animations.
+
+### 3. Navigation & Flow Refinements
+- **What:** Updated `app/creative/page.tsx` and the main `Home` components to handle the new scrolling architecture.
+- **Why:** To ensure smooth transitions between the fixed hero backgrounds and the scrollable content sections.
+- **How:** Implemented Intersection Observers (via a custom `Reveal` component) to trigger animations as sections enter the viewport, ensuring a "wow" factor on every scroll.
+
+---
 *Note: This file will be updated every time changes are made to the codebase to maintain a clear history of technical decisions.*

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { getActiveBackgrounds } from '@/lib/supabase/backgrounds'
 import CreativeContent from '@/components/landing/CreativeContent'
+import CreativeSections from '@/components/landing/CreativeSections'
 
 const FALLBACK_VIDEO =
   'https://rwoqsdnokmwrwqinevlk.supabase.co/storage/v1/object/public/Movie%20Thumbnails/BG%20videos/reducingits.mp4'
@@ -45,33 +46,38 @@ export default function CreativeWorldPage() {
   const blur = background?.blur_level ?? 0
 
   return (
-    <main style={{ position: 'relative', minHeight: '100dvh', background: '#0d0d0d', overflow: 'hidden', fontFamily: FONT_UI }}>
-      {isImage ? (
-        <img
-          src={mediaUrl}
-          alt=""
-          style={{
-            position: 'fixed', inset: 0, width: '100%', height: '100%',
-            objectFit: 'cover', zIndex: 0,
-            filter: `brightness(${brightness}) blur(${blur}px)`
-          }}
-        />
-      ) : (
-        <video
-          key={mediaUrl}
-          autoPlay muted loop playsInline preload="auto"
-          aria-hidden="true"
-          style={{
-            position: 'fixed', inset: 0, width: '100%', height: '100%',
-            objectFit: 'cover', zIndex: 0,
-            filter: `brightness(${brightness}) blur(${blur}px)`
-          }}
-        >
-          <source src={mediaUrl} type="video/mp4" />
-        </video>
-      )}
+    <main style={{ position: 'relative', background: '#080808', fontFamily: FONT_UI }}>
+      {/* ── First viewport: fixed video + hero ── */}
+      <div style={{ position: 'relative', minHeight: '100dvh', overflow: 'hidden' }}>
+        {isImage ? (
+          <img
+            src={mediaUrl}
+            alt=""
+            style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'cover', zIndex: 0,
+              filter: `brightness(${brightness}) blur(${blur}px)`
+            }}
+          />
+        ) : (
+          <video
+            key={mediaUrl}
+            autoPlay muted loop playsInline preload="auto"
+            aria-hidden="true"
+            style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'cover', zIndex: 0,
+              filter: `brightness(${brightness}) blur(${blur}px)`
+            }}
+          >
+            <source src={mediaUrl} type="video/mp4" />
+          </video>
+        )}
+        <CreativeContent />
+      </div>
 
-      <CreativeContent />
+      {/* ── Scroll down: all creative sections ── */}
+      <CreativeSections />
     </main>
   )
 }
