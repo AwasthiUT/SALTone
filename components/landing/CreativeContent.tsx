@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import type { CreativeSection } from '@/lib/supabase/creative'
 
 const FONT_DISPLAY = '"HelveticaBold", "Helvetica Neue", Helvetica, Arial, sans-serif'
 const FONT_BODY    = '"GlacialIndifferenceItalic", "Helvetica Neue", Helvetica, Arial, sans-serif'
@@ -19,9 +20,32 @@ const itemVariants = {
   show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.4, 0, 0.2, 1] as const } },
 }
 
-export default function CreativeContent({ onBack }: { onBack?: () => void }) {
+function activeItems<T extends { is_active?: boolean | null }>(items?: T[]) {
+  return (items ?? []).filter((item) => item.is_active !== false)
+}
+
+function renderLandingTitle(title: string) {
+  const lines = title.includes('\n') ? title.split('\n') : title.split(/ (?=[^ ]+$)/)
+
+  return lines.map((line, index) => (
+    <span key={`${line}-${index}`}>
+      {index > 0 && <br />}
+      {line}
+    </span>
+  ))
+}
+
+export default function CreativeContent({ onBack, section }: { onBack?: () => void; section?: CreativeSection }) {
   const router = useRouter()
   const [hoveredYear, setHoveredYear] = useState<string | null>(null)
+  const boxes = activeItems(section?.metadata?.boxes)
+  const yearBoxes = section
+    ? boxes.map((box) => ({ year: box.title ?? '', href: box.link ?? '#' })).filter((box) => box.year)
+    : YEARS.map((year) => ({ year, href: `/years/${year}` }))
+
+  if (section) {
+    console.log("Rendering section:", section.section_key)
+  }
 
   const handleBack = () => {
     if (onBack) onBack()
@@ -93,7 +117,7 @@ export default function CreativeContent({ onBack }: { onBack?: () => void }) {
             fontFamily: FONT_UI, marginBottom: '1.2rem',
           }}
         >
-          the archive
+          {section?.description ?? 'the archive'}
         </motion.p>
 
         <motion.h1
@@ -110,7 +134,7 @@ export default function CreativeContent({ onBack }: { onBack?: () => void }) {
             margin: '0 0 1.5rem',
           }}
         >
-          Everything<br />made.
+          {renderLandingTitle(section?.title ?? 'Everything made.')}
         </motion.h1>
 
         <motion.p
@@ -127,8 +151,12 @@ export default function CreativeContent({ onBack }: { onBack?: () => void }) {
             marginBottom: '3.5rem',
           }}
         >
-          Films, stills, half-finished experiments. A personal archive that runs
-          from 2018 to now — unfiltered, unresolved, alive.
+          {section?.subtitle ?? (
+            <>
+              Films, stills, half-finished experiments. A personal archive that runs
+              from 2018 to now — unfiltered, unresolved, alive.
+            </>
+          )}
         </motion.p>
 
         {/* Year grid */}
@@ -143,10 +171,10 @@ export default function CreativeContent({ onBack }: { onBack?: () => void }) {
             maxWidth: '700px',
           }}
         >
-          {YEARS.map((year) => (
+          {yearBoxes.map(({ year, href }) => (
             <motion.a
               key={year}
-              href={`/years/${year}`}
+              href={href}
               variants={itemVariants}
               onMouseEnter={() => setHoveredYear(year)}
               onMouseLeave={() => setHoveredYear(null)}

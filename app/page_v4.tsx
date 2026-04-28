@@ -16,6 +16,7 @@ import { getActiveBackgrounds } from '@/lib/supabase/backgrounds'
 import CreativeContent from '@/components/landing/CreativeContent'
 import CreativeSections from '@/components/landing/CreativeSections'
 import WorkContent from '@/components/landing/WorkContent'
+import type { CreativeSection } from '@/lib/supabase/creative'
 
 const CREATIVE_ROUTE  = '/creative'
 const TECHNICAL_ROUTE = '/work'
@@ -26,8 +27,16 @@ const FONT_DISPLAY = '"HelveticaBold", "Helvetica Neue", Helvetica, Arial, sans-
 const FONT_BODY    = '"GlacialIndifferenceItalic", "Helvetica Neue", Helvetica, Arial, sans-serif'
 const FONT_UI      = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 
-export default function HomeV4() {
-  const [background, setBackground] = useState<any>(null)
+type CreativeBackground = {
+  video_url?: string | null
+  mode?: string | null
+  brightness?: number | null
+  blur_level?: number | null
+  device_type?: string | null
+}
+
+export default function HomeV4({ creativeSections = [] }: { creativeSections?: CreativeSection[] }) {
+  const [background, setBackground] = useState<CreativeBackground | null>(null)
   const [hovered,    setHovered]    = useState<'left' | 'right' | null>(null)
   const [selected,   setSelected]   = useState<'left' | 'right' | null>(null)
   const [showContent, setShowContent] = useState<'left' | 'right' | null>(null)
@@ -35,7 +44,8 @@ export default function HomeV4() {
   const animating = useRef(false)
 
   useEffect(() => {
-    setMounted(true)
+    const frame = requestAnimationFrame(() => setMounted(true))
+
     async function fetchBackground() {
       try {
         const data = await getActiveBackgrounds()
@@ -60,6 +70,8 @@ export default function HomeV4() {
       }
     }
     fetchBackground()
+
+    return () => cancelAnimationFrame(frame)
   }, [])
 
   // Handle browser back button (popstate)
@@ -104,6 +116,8 @@ export default function HomeV4() {
   const isImage = mediaUrl.match(/\.(jpg|jpeg|png|webp|gif)$/i) !== null
   const brightness = background?.brightness ?? 1
   const blur = background?.blur_level ?? 0
+  const landingSection = creativeSections.find((section) => section.section_type === 'first')
+  const scrollSections = creativeSections.filter((section) => section.section_type !== 'first')
 
   return (
     <>
@@ -497,9 +511,9 @@ export default function HomeV4() {
           {showContent === 'left' && (
             <div className="v4-scroll-container">
               <div style={{ minHeight: '100dvh', position: 'relative' }}>
-                <CreativeContent onBack={handleBack} />
+                <CreativeContent onBack={handleBack} section={landingSection} />
               </div>
-              <CreativeSections />
+              <CreativeSections sections={scrollSections} />
             </div>
           )}
         </div>

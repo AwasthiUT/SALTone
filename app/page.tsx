@@ -3,6 +3,9 @@ import HomeV2 from './page_v2'
 import HomeV3 from './page_v3'
 import HomeV1 from './page_v1'
 import HomeV4 from './page_v4'
+import { getCreativeSections } from '@/lib/supabase/creative'
+
+export const dynamic = 'force-dynamic'
 
 /**
  * Landing Page Server Orchestrator
@@ -44,7 +47,8 @@ export default async function Page() {
     return <HomeV2 />
   }
   if (version === 'v4') {
-    return <HomeV4 />
+    const creativeSections = await getCreativeSections()
+    return <HomeV4 creativeSections={creativeSections} />
   }
 
   // Render current iteration (v3 default)
