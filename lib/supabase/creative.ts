@@ -6,6 +6,7 @@ export type CreativeMetadata = {
   items?: CreativeMetadataItem[]
   blocks?: CreativeMetadataItem[]
   points?: CreativeMetadataItem[]
+  fields?: CreativeMetadataItem[]
 }
 
 export type CreativeMetadataItem = {
@@ -20,7 +21,12 @@ export type CreativeMetadataItem = {
   label?: string | null
   text?: string | null
   value?: string | null
+  name?: string | null
+  type?: string | null
+  placeholder?: string | null
+  required?: boolean | null
   is_active?: boolean | null
+  options?: CreativeMetadataItem[]
 }
 
 export type CreativeSection = {
@@ -61,7 +67,10 @@ export async function getCreativeSections(): Promise<CreativeSection[]> {
     .eq('is_active', true)
     .order('position', { ascending: true })
 
-  console.log('Creative Sections:', data)
+  const newsletter = data?.find(s => s.section_key === "newsletter");
+  if (newsletter) console.log("Newsletter section (Source):", newsletter);
+
+  // console.log('Creative Sections:', data)
 
   if (error) {
     console.error('Failed to fetch creative sections:', error)

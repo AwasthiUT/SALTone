@@ -16,7 +16,8 @@ import { getActiveBackgrounds } from '@/lib/supabase/backgrounds'
 import CreativeContent from '@/components/landing/CreativeContent'
 import CreativeSections from '@/components/landing/CreativeSections'
 import WorkContent from '@/components/landing/WorkContent'
-import type { CreativeSection } from '@/lib/supabase/creative'
+import { getCreativeSections, type CreativeSection } from '@/lib/supabase/creative'
+import type { TechnicalSection } from '@/lib/supabase/technical'
 
 const CREATIVE_ROUTE  = '/creative'
 const TECHNICAL_ROUTE = '/work'
@@ -35,7 +36,13 @@ type CreativeBackground = {
   device_type?: string | null
 }
 
-export default function HomeV4({ creativeSections = [] }: { creativeSections?: CreativeSection[] }) {
+export default function HomeV4({ 
+  creativeSections = [], 
+  technicalSections = [] 
+}: { 
+  creativeSections?: CreativeSection[], 
+  technicalSections?: TechnicalSection[] 
+}) {
   const [background, setBackground] = useState<CreativeBackground | null>(null)
   const [hovered,    setHovered]    = useState<'left' | 'right' | null>(null)
   const [selected,   setSelected]   = useState<'left' | 'right' | null>(null)
@@ -577,7 +584,7 @@ export default function HomeV4({ creativeSections = [] }: { creativeSections?: C
           {/* Render target page instantly in-place after expansion */}
           {showContent === 'right' && (
             <div className="v4-scroll-container">
-              <WorkContent onBack={handleBack} />
+              <WorkContent onBack={handleBack} sections={technicalSections} />
             </div>
           )}
         </div>

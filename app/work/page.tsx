@@ -1,10 +1,12 @@
-'use client'
-
 import WorkContent from '@/components/landing/WorkContent'
+import { getTechnicalSections } from '@/lib/supabase/technical'
 
 const FONT_UI = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 
-export default function WorkPage() {
+export default async function WorkPage() {
+  const data = await getTechnicalSections()
+  console.log("Technical Page Data:", data)
+
   return (
     <main style={{
       minHeight: '100dvh',
@@ -12,7 +14,7 @@ export default function WorkPage() {
       fontFamily: FONT_UI,
       color: '#0d0d0d',
     }}>
-      <WorkContent />
+      <WorkContent sections={data} />
     </main>
   )
 }

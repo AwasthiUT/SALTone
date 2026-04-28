@@ -14,24 +14,24 @@
 import { useState, useEffect, useRef } from 'react'
 import { getActiveBackgrounds } from '@/lib/supabase/backgrounds'
 import CreativeContent from '@/components/landing/CreativeContent'
-import CreativeSections from '@/components/landing/CreativeSections'
+// import CreativeSections from '@/components/landing/CreativeSections'
 import WorkContent from '@/components/landing/WorkContent'
 
-const CREATIVE_ROUTE  = '/creative'
+const CREATIVE_ROUTE = '/creative'
 const TECHNICAL_ROUTE = '/work'
-const FALLBACK_VIDEO  =
+const FALLBACK_VIDEO =
   'https://rwoqsdnokmwrwqinevlk.supabase.co/storage/v1/object/public/Movie%20Thumbnails/BG%20videos/reducingits.mp4'
 
 const FONT_DISPLAY = '"HelveticaBold", "Helvetica Neue", Helvetica, Arial, sans-serif'
-const FONT_BODY    = '"GlacialIndifferenceItalic", "Helvetica Neue", Helvetica, Arial, sans-serif'
-const FONT_UI      = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+const FONT_BODY = '"GlacialIndifferenceItalic", "Helvetica Neue", Helvetica, Arial, sans-serif'
+const FONT_UI = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 
 export default function HomeV4() {
   const [background, setBackground] = useState<any>(null)
-  const [hovered,    setHovered]    = useState<'left' | 'right' | null>(null)
-  const [selected,   setSelected]   = useState<'left' | 'right' | null>(null)
+  const [hovered, setHovered] = useState<'left' | 'right' | null>(null)
+  const [selected, setSelected] = useState<'left' | 'right' | null>(null)
   const [showContent, setShowContent] = useState<'left' | 'right' | null>(null)
-  const [mounted,    setMounted]    = useState(false)
+  const [mounted, setMounted] = useState(false)
   const animating = useRef(false)
 
   useEffect(() => {
@@ -40,9 +40,9 @@ export default function HomeV4() {
       try {
         const data = await getActiveBackgrounds()
         if (!data || data.length === 0) return
-        
+
         const creative = data.filter((bg) => bg.mode?.toLowerCase() === 'creative')
-        
+
         const isMobile = window.innerWidth < 768
         const suitable = creative.filter(bg => {
           if (isMobile && bg.device_type?.toLowerCase() === 'desktop') return false
@@ -52,7 +52,7 @@ export default function HomeV4() {
 
         const pool = suitable.length > 0 ? suitable : creative
         if (pool.length === 0) return
-        
+
         const randomBg = pool[Math.floor(Math.random() * pool.length)]
         setBackground(randomBg)
       } catch (err) {
@@ -435,7 +435,7 @@ export default function HomeV4() {
           style={{ cursor: showContent ? 'default' : 'pointer' }}
         >
           <div className="v4-grain" aria-hidden="true" />
-          
+
           {isImage ? (
             <img
               src={mediaUrl}
@@ -454,7 +454,7 @@ export default function HomeV4() {
               <source src={mediaUrl} type="video/mp4" />
             </video>
           )}
-          
+
           <div className="v4-overlay" aria-hidden="true" />
 
           {/* Landing Content (Fades out when selected) */}
@@ -499,7 +499,7 @@ export default function HomeV4() {
               <div style={{ minHeight: '100dvh', position: 'relative' }}>
                 <CreativeContent onBack={handleBack} />
               </div>
-              <CreativeSections />
+              {/* <CreativeSections /> */}
             </div>
           )}
         </div>
@@ -523,7 +523,7 @@ export default function HomeV4() {
           style={{ cursor: showContent ? 'default' : 'pointer' }}
         >
           <div className="v4-right-shimmer" aria-hidden="true" />
-          
+
           {/* Landing Content (Fades out when selected) */}
           <div
             className="v4-landing-content"

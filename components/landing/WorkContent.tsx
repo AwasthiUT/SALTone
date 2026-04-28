@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FaLinkedin, FaGithub, FaInstagram, FaYoutube } from 'react-icons/fa'
+import type { TechnicalSection } from '@/lib/supabase/technical'
 
 const FONT_DISPLAY = '"HelveticaBold", "Helvetica Neue", Helvetica, Arial, sans-serif'
 const FONT_BODY    = '"GlacialIndifferenceItalic", "Helvetica Neue", Helvetica, Arial, sans-serif'
@@ -102,7 +103,7 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
 }
 
 // ─── Section label + title pattern ─────────────────
-function SectionHead({ label, title, sub }: { label: string; title: React.ReactNode; sub?: string }) {
+function SectionHead({ label, title, sub }: { label: string; title: React.ReactNode; sub?: string | null }) {
   return (
     <div className="mb-16 sm:mb-20">
       <p style={{ fontFamily: FONT_DISPLAY, fontSize: '0.62rem', letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)', marginBottom: '1rem' }}>
@@ -116,7 +117,7 @@ function SectionHead({ label, title, sub }: { label: string; title: React.ReactN
   )
 }
 
-export default function WorkContent({ onBack }: { onBack?: () => void }) {
+export default function WorkContent({ onBack, sections = [] }: { onBack?: () => void; sections?: TechnicalSection[] }) {
   const router = useRouter()
   const [hoveredProject, setHoveredProject] = useState<number | null>(null)
 
@@ -146,154 +147,216 @@ export default function WorkContent({ onBack }: { onBack?: () => void }) {
         </div>
       </motion.nav>
 
-      {/* ── Hero ── */}
-      <motion.header initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}
-        style={{ padding: '5rem 2.5rem 3rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <p style={{ fontSize: '0.62rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)', fontWeight: 500, marginBottom: '1.2rem' }}>
-          Utkarsh Awasthi
-        </p>
-        <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 'clamp(2.8rem, 6vw, 5.5rem)', fontWeight: 700, lineHeight: 1.0, letterSpacing: '-0.03em', color: '#0d0d0d', margin: '0 0 1.4rem' }}>
-          I build things<br />that ship.
-        </h1>
-        <p style={{ fontSize: '1.05rem', lineHeight: 1.75, color: 'rgba(0,0,0,0.48)', maxWidth: '46ch', fontFamily: FONT_BODY, fontStyle: 'italic' }}>
-          Full-stack engineer. I design systems, write production code, and care about the details that make software feel right. Currently open to new work.
-        </p>
-        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '2.5rem', flexWrap: 'wrap' }}>
-          {['#experience', '#projects', '#stack', '#contact'].map(anchor => (
-            <a key={anchor} href={anchor} style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', textDecoration: 'none', fontFamily: FONT_UI, fontWeight: 500, transition: 'color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#0d0d0d')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,0,0,0.4)')}>
-              {anchor.replace('#', '')} ↓
-            </a>
-          ))}
-        </div>
-      </motion.header>
+      {/* ── Dynamic Sections ── */}
+      {sections.map((section) => {
+        console.log("Rendering section:", section.section_key);
 
-      {/* ── CURRENTLY ── */}
-      <section style={{ padding: '3.5rem 2.5rem', background: '#f9f9f7', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Reveal>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '2.5rem' }}>
-            {CURRENTLY.map(({ label, value }) => (
-              <div key={label}>
-                <p style={{ fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)', fontFamily: FONT_UI, fontWeight: 500, marginBottom: '0.5rem' }}>{label}</p>
-                <p style={{ fontSize: '0.95rem', color: '#0d0d0d', fontFamily: FONT_DISPLAY, fontWeight: 700 }}>{value}</p>
-              </div>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      {/* ── STACK ── */}
-      <section id="stack" style={{ padding: '5rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Reveal>
-          <SectionHead label="capabilities" title={<>Stack &<br /><span style={{ color: 'rgba(0,0,0,0.2)' }}>Tooling.</span></>} sub="Technologies I reach for every day." />
-        </Reveal>
-        <Reveal delay={0.1}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1px', background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
-            {SKILLS.map(({ label, items }) => (
-              <div key={label} style={{ background: '#f9f9f7', padding: '2rem' }}>
-                <p style={{ fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.32)', fontWeight: 600, marginBottom: '1.2rem', fontFamily: FONT_UI }}>{label}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {items.map(item => (
-                    <span key={item} style={{ fontSize: '0.95rem', color: 'rgba(0,0,0,0.75)', fontWeight: 500, fontFamily: FONT_DISPLAY, letterSpacing: '-0.01em' }}>{item}</span>
+        switch (section.section_key) {
+          case 'landing':
+            return (
+              <motion.header 
+                key={section.id ?? 'landing'}
+                initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}
+                style={{ padding: '5rem 2.5rem 3rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <p style={{ fontSize: '0.62rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)', fontWeight: 500, marginBottom: '1.2rem' }}>
+                  {section.description}
+                </p>
+                <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 'clamp(2.8rem, 6vw, 5.5rem)', fontWeight: 700, lineHeight: 1.0, letterSpacing: '-0.03em', color: '#0d0d0d', margin: '0 0 1.4rem' }}>
+                  {section.title?.split('\n').map((line, i) => (
+                    <span key={i}>{line}{i < (section.title?.split('\n').length ?? 0) - 1 && <br />}</span>
+                  ))}
+                </h1>
+                <p style={{ fontSize: '1.05rem', lineHeight: 1.75, color: 'rgba(0,0,0,0.48)', maxWidth: '46ch', fontFamily: FONT_BODY, fontStyle: 'italic' }}>
+                  {section.subtitle}
+                </p>
+                <div style={{ display: 'flex', gap: '1.5rem', marginTop: '2.5rem', flexWrap: 'wrap' }}>
+                  {['experience', 'projects', 'stack', 'contact'].map(anchor => (
+                    <a key={anchor} href={`#${anchor}`} style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', textDecoration: 'none', fontFamily: FONT_UI, fontWeight: 500, transition: 'color 0.2s' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#0d0d0d')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,0,0,0.4)')}>
+                      {anchor} ↓
+                    </a>
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        </Reveal>
-      </section>
+              </motion.header>
+            );
 
-      {/* ── EXPERIENCE ── */}
-      <section id="experience" style={{ padding: '5rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Reveal>
-          <SectionHead label="experience" title={<>Where I&apos;ve<br /><span style={{ color: 'rgba(0,0,0,0.2)' }}>Built Things.</span></>} sub="Production code. Real teams. Real stakes." />
-        </Reveal>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-          {EXPERIENCE.map((exp, i) => (
-            <Reveal key={i} delay={i * 0.1}>
-              <div style={{ padding: '2.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.015)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem' }}>
-                  <div>
-                    <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: '1.4rem', fontWeight: 700, color: '#0d0d0d', letterSpacing: '-0.02em', marginBottom: '0.2rem' }}>{exp.role}</h3>
-                    <p style={{ fontSize: '0.8rem', color: 'rgba(0,0,0,0.45)', fontFamily: FONT_UI }}>{exp.company}</p>
+          case 'stats':
+            const statsItems = (section.metadata?.items ?? []).filter(item => item.is_active !== false);
+            return (
+              <section key={section.id ?? 'stats'} style={{ padding: '3.5rem 2.5rem', background: '#f9f9f7', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <Reveal>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '2.5rem' }}>
+                    {statsItems.map((item, idx) => (
+                      <div key={idx}>
+                        <p style={{ fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)', fontFamily: FONT_UI, fontWeight: 500, marginBottom: '0.5rem' }}>{item.subtitle}</p>
+                        <p style={{ fontSize: '0.95rem', color: '#0d0d0d', fontFamily: FONT_DISPLAY, fontWeight: 700 }}>{item.title}</p>
+                      </div>
+                    ))}
                   </div>
-                  <p style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: 'rgba(0,0,0,0.3)', fontFamily: FONT_UI, textTransform: 'uppercase' }}>{exp.period}</p>
-                </div>
-                <p style={{ fontFamily: FONT_BODY, fontStyle: 'italic', fontSize: '1rem', lineHeight: 1.7, color: 'rgba(0,0,0,0.5)', maxWidth: '60ch' }}>{exp.description}</p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {exp.tags.map(tag => (
-                    <span key={tag} style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '0.25rem 0.65rem', border: '1px solid rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.4)', fontFamily: FONT_UI }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
+                </Reveal>
+              </section>
+            );
 
-      {/* ── PROJECTS ── */}
-      <section id="projects" style={{ padding: '5rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)', background: '#f9f9f7' }}>
-        <Reveal>
-          <SectionHead label="work" title={<>Selected<br /><span style={{ color: 'rgba(0,0,0,0.2)' }}>Projects.</span></>} sub="Things I've built that I'm proud of." />
-        </Reveal>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1px', background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden', borderRadius: '4px' }}>
-          {PROJECTS.map((proj, i) => (
-            <Reveal key={i} delay={i * 0.08}>
-              <motion.div
-                onHoverStart={() => setHoveredProject(i)}
-                onHoverEnd={() => setHoveredProject(null)}
-                style={{ background: hoveredProject === i ? '#fff' : '#f9f9f7', padding: '2.5rem 2rem', minHeight: '240px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'background 0.3s ease', cursor: 'default' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: '1.1rem', fontWeight: 700, color: '#0d0d0d', letterSpacing: '-0.02em' }}>{proj.title}</h3>
-                    <span style={{ fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid rgba(0,0,0,0.15)', color: 'rgba(0,0,0,0.4)', fontFamily: FONT_UI, whiteSpace: 'nowrap' }}>
-                      {proj.status}
-                    </span>
+          case 'capabilities':
+            const capabilityBlocks = (section.metadata?.blocks ?? []).filter(block => block.is_active !== false);
+            return (
+              <section key={section.id ?? 'capabilities'} id="stack" style={{ padding: '5rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <Reveal>
+                  <SectionHead 
+                    label={section.description ?? "capabilities"} 
+                    title={section.title?.includes('\n') ? 
+                      section.title.split('\n').map((line, i) => (
+                        <span key={i} style={i > 0 ? { color: 'rgba(0,0,0,0.2)' } : {}}>{line}{i < section.title!.split('\n').length - 1 && <br />}</span>
+                      )) : section.title 
+                    } 
+                    sub={section.subtitle} 
+                  />
+                </Reveal>
+                <Reveal delay={0.1}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1px', background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                    {capabilityBlocks.map((block, idx) => (
+                      <div key={idx} style={{ background: '#f9f9f7', padding: '2rem' }}>
+                        <p style={{ fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.32)', fontWeight: 600, marginBottom: '1.2rem', fontFamily: FONT_UI }}>{block.title}</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                          {(block.technologies ?? []).map(item => (
+                            <span key={item} style={{ fontSize: '0.95rem', color: 'rgba(0,0,0,0.75)', fontWeight: 500, fontFamily: FONT_DISPLAY, letterSpacing: '-0.01em' }}>{item}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p style={{ fontFamily: FONT_BODY, fontStyle: 'italic', fontSize: '0.9rem', lineHeight: 1.65, color: 'rgba(0,0,0,0.5)', marginBottom: '1.5rem' }}>{proj.desc}</p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  {proj.stack.map(t => (
-                    <span key={t} style={{ fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', background: 'rgba(0,0,0,0.05)', color: 'rgba(0,0,0,0.45)', fontFamily: FONT_UI }}>
-                      {t}
-                    </span>
+                </Reveal>
+              </section>
+            );
+
+          case 'experience':
+            const expItems = [...(section.metadata?.items ?? [])].sort((a, b) => {
+              const yearA = parseInt(String(a.start)) || 0;
+              const yearB = parseInt(String(b.start)) || 0;
+              return yearB - yearA;
+            });
+            return (
+              <section key={section.id ?? 'experience'} id="experience" style={{ padding: '5rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <Reveal>
+                  <SectionHead 
+                    label={section.description ?? "experience"} 
+                    title={section.title?.includes('\n') ? 
+                      section.title.split('\n').map((line, i) => (
+                        <span key={i} style={i > 0 ? { color: 'rgba(0,0,0,0.2)' } : {}}>{line}{i < section.title!.split('\n').length - 1 && <br />}</span>
+                      )) : section.title 
+                    } 
+                    sub={section.subtitle} 
+                  />
+                </Reveal>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                  {expItems.map((exp, i) => (
+                    <Reveal key={i} delay={i * 0.1}>
+                      <div style={{ padding: '2.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', transition: 'background 0.2s ease' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.015)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem' }}>
+                          <div>
+                            <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: '1.4rem', fontWeight: 700, color: '#0d0d0d', letterSpacing: '-0.02em', marginBottom: '0.2rem' }}>{exp.role}</h3>
+                            <p style={{ fontSize: '0.8rem', color: 'rgba(0,0,0,0.45)', fontFamily: FONT_UI }}>{exp.company}</p>
+                          </div>
+                          <p style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: 'rgba(0,0,0,0.3)', fontFamily: FONT_UI, textTransform: 'uppercase' }}>{exp.start} — {exp.end}</p>
+                        </div>
+                        <p style={{ fontFamily: FONT_BODY, fontStyle: 'italic', fontSize: '1rem', lineHeight: 1.7, color: 'rgba(0,0,0,0.5)', maxWidth: '60ch' }}>{exp.description}</p>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          {(exp.tech ?? []).map(tag => (
+                            <span key={tag} style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '0.25rem 0.65rem', border: '1px solid rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.4)', fontFamily: FONT_UI }}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </Reveal>
                   ))}
                 </div>
-              </motion.div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
+              </section>
+            );
 
-      {/* ── CONTACT ── */}
-      <section id="contact" style={{ padding: '6rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Reveal>
-          <SectionHead label="contact" title={<>Let&apos;s build<br /><span style={{ color: 'rgba(0,0,0,0.2)' }}>something.</span></>} />
-        </Reveal>
-        <Reveal delay={0.1}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1px', background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden', borderRadius: '4px', maxWidth: '900px' }}>
-            {[
-              { label: 'Email', value: 'utkarshawasthi@email.com', href: 'mailto:utkarshawasthi@email.com' },
-              { label: 'LinkedIn', value: 'Connect professionally', href: 'https://www.linkedin.com/in/utkarsh-awasthi-b35917231/' },
-              { label: 'GitHub', value: '@utkarsh', href: '#' },
-              { label: 'YouTube', value: '@Yousaidut', href: 'https://www.youtube.com/@Yousaidut' },
-            ].map(({ label, value, href }) => (
-              <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer"
-                style={{ display: 'block', background: '#f9f9f7', padding: '2rem', textDecoration: 'none', transition: 'background 0.25s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#fff')}
-                onMouseLeave={e => (e.currentTarget.style.background = '#f9f9f7')}>
-                <p style={{ fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)', fontFamily: FONT_UI, marginBottom: '0.5rem' }}>{label}</p>
-                <p style={{ fontFamily: FONT_DISPLAY, fontSize: '0.95rem', color: '#0d0d0d', fontWeight: 600 }}>{value} →</p>
-              </a>
-            ))}
-          </div>
-        </Reveal>
-      </section>
+          case 'projects':
+            const projectItems = (section.metadata?.items ?? []);
+            return (
+              <section key={section.id ?? 'projects'} id="projects" style={{ padding: '5rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)', background: '#f9f9f7' }}>
+                <Reveal>
+                  <SectionHead 
+                    label={section.description ?? "work"} 
+                    title={section.title?.includes('\n') ? 
+                      section.title.split('\n').map((line, i) => (
+                        <span key={i} style={i > 0 ? { color: 'rgba(0,0,0,0.2)' } : {}}>{line}{i < section.title!.split('\n').length - 1 && <br />}</span>
+                      )) : section.title 
+                    } 
+                    sub={section.subtitle} 
+                  />
+                </Reveal>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1px', background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden', borderRadius: '4px' }}>
+                  {projectItems.map((proj, i) => (
+                    <Reveal key={i} delay={i * 0.08}>
+                      <motion.div
+                        onHoverStart={() => setHoveredProject(i)}
+                        onHoverEnd={() => setHoveredProject(null)}
+                        whileHover={{ background: '#fff' }}
+                        style={{ background: '#f9f9f7', padding: '2.5rem 2rem', minHeight: '240px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'background 0.3s ease', cursor: 'default' }}>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                            <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: '1.1rem', fontWeight: 700, color: '#0d0d0d', letterSpacing: '-0.02em' }}>{proj.title}</h3>
+                            <span style={{ fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', border: '1px solid rgba(0,0,0,0.15)', color: 'rgba(0,0,0,0.4)', fontFamily: FONT_UI, whiteSpace: 'nowrap' }}>
+                              {proj.status}
+                            </span>
+                          </div>
+                          <p style={{ fontFamily: FONT_BODY, fontStyle: 'italic', fontSize: '0.9rem', lineHeight: 1.65, color: 'rgba(0,0,0,0.5)', marginBottom: '1.5rem' }}>{proj.description}</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          {(proj.tech ?? []).map(t => (
+                            <span key={t} style={{ fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.2rem 0.55rem', background: 'rgba(0,0,0,0.05)', color: 'rgba(0,0,0,0.45)', fontFamily: FONT_UI }}>
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </motion.div>
+                    </Reveal>
+                  ))}
+                </div>
+              </section>
+            );
+
+          case 'contact':
+            const contactItems = (section.metadata?.items ?? []);
+            return (
+              <section key={section.id ?? 'contact'} id="contact" style={{ padding: '6rem 2.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <Reveal>
+                  <SectionHead 
+                    label={section.description ?? "contact"} 
+                    title={section.title?.includes('\n') ? 
+                      section.title.split('\n').map((line, i) => (
+                        <span key={i} style={i > 0 ? { color: 'rgba(0,0,0,0.2)' } : {}}>{line}{i < section.title!.split('\n').length - 1 && <br />}</span>
+                      )) : section.title 
+                    } 
+                  />
+                </Reveal>
+                <Reveal delay={0.1}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1px', background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden', borderRadius: '4px', maxWidth: '900px' }}>
+                    {contactItems.map((item, idx) => (
+                      <a key={idx} href={item.link ?? '#'} target={item.link?.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer"
+                        style={{ display: 'block', background: '#f9f9f7', padding: '2rem', textDecoration: 'none', transition: 'background 0.25s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#fff')}
+                        onMouseLeave={e => (e.currentTarget.style.background = '#f9f9f7')}>
+                        <p style={{ fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)', fontFamily: FONT_UI, marginBottom: '0.5rem' }}>{item.title}</p>
+                        <p style={{ fontFamily: FONT_DISPLAY, fontSize: '0.95rem', color: '#0d0d0d', fontWeight: 600 }}>{item.subtitle} →</p>
+                      </a>
+                    ))}
+                  </div>
+                </Reveal>
+              </section>
+            );
+
+          default:
+            return null;
+        }
+      })}
 
       {/* ── Footer ── */}
       <motion.footer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}

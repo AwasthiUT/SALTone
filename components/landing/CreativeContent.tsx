@@ -21,7 +21,8 @@ const itemVariants = {
 }
 
 function activeItems<T extends { is_active?: boolean | null }>(items?: T[]) {
-  return (items ?? []).filter((item) => item.is_active !== false)
+  // Return all items now as we want to handle is_active state in the UI
+  return items ?? []
 }
 
 function renderLandingTitle(title: string) {
@@ -38,10 +39,27 @@ function renderLandingTitle(title: string) {
 export default function CreativeContent({ onBack, section }: { onBack?: () => void; section?: CreativeSection }) {
   const router = useRouter()
   const [hoveredYear, setHoveredYear] = useState<string | null>(null)
-  const boxes = activeItems(section?.metadata?.boxes)
+  // Archive section might use 'items' or 'boxes'. We check both.
+  const rawBoxes = section?.metadata?.items || section?.metadata?.boxes || []
+  const boxes = [...rawBoxes].sort((a, b) => {
+    const yearA = parseInt(a.title || '0')
+    const yearB = parseInt(b.title || '0')
+    return yearB - yearA
+  })
+  
   const yearBoxes = section
-    ? boxes.map((box) => ({ year: box.title ?? '', href: box.link ?? '#' })).filter((box) => box.year)
-    : YEARS.map((year) => ({ year, href: `/years/${year}` }))
+    ? boxes.map((box) => ({ 
+        title: box.title ?? '', 
+        image: box.image ?? '', 
+        link: box.link ?? box.href ?? '#', 
+        is_active: box.is_active !== false 
+      })).filter((box) => box.title)
+    : YEARS.map((year) => ({ 
+        title: year, 
+        image: '', 
+        link: `/years/${year}`, 
+        is_active: true 
+      }))
 
   if (section) {
     console.log("Rendering section:", section.section_key)
@@ -171,22 +189,24 @@ export default function CreativeContent({ onBack, section }: { onBack?: () => vo
             maxWidth: '700px',
           }}
         >
-          {yearBoxes.map(({ year, href }) => (
+          {yearBoxes.map(({ title, image, link, is_active }) => (
             <motion.a
-              key={year}
-              href={href}
+              key={title}
+              href={is_active ? link : '#'}
+              onClick={(e) => { if (!is_active) e.preventDefault() }}
               variants={itemVariants}
-              onMouseEnter={() => setHoveredYear(year)}
+              onMouseEnter={() => setHoveredYear(title)}
               onMouseLeave={() => setHoveredYear(null)}
               style={{
+                position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 padding: '1rem 1.1rem',
-                border: `1px solid ${hoveredYear === year ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.1)'}`,
+                border: `1px solid ${hoveredYear === title ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.1)'}`,
                 borderRadius: '6px',
-                background: hoveredYear === year ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.02)',
-                color: hoveredYear === year ? '#ffffff' : 'rgba(255,255,255,0.5)',
+                background: hoveredYear === title ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.02)',
+                color: hoveredYear === title ? '#ffffff' : 'rgba(255,255,255,0.5)',
                 textDecoration: 'none',
                 fontSize: '1.1rem',
                 fontFamily: FONT_DISPLAY,
@@ -195,13 +215,31 @@ export default function CreativeContent({ onBack, section }: { onBack?: () => vo
                 transition: 'all 0.22s ease',
                 aspectRatio: '1.4 / 1',
                 backdropFilter: 'blur(6px)',
-                cursor: 'pointer',
+                cursor: is_active ? 'pointer' : 'default',
+                overflow: 'hidden',
               }}
             >
-              <span style={{ fontSize: '0.58rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.5, fontFamily: FONT_UI, fontWeight: 500 }}>
-                {hoveredYear === year ? 'enter →' : ''}
+              {image && (
+                <img
+                  src={image}
+                  alt={title}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    zIndex: -1,
+                    opacity: hoveredYear === title ? 0.5 : 0.25,
+                    transition: 'opacity 0.3s ease',
+                    filter: is_active ? 'none' : 'grayscale(1)',
+                  }}
+                />
+              )}
+              <span style={{ fontSize: '0.58rem', letterSpacing: '0.3em', textTransform: 'uppercase', opacity: 0.5, fontFamily: FONT_UI, fontWeight: 500 }}>
+                {!is_active ? 'Coming Soon' : (hoveredYear === title ? 'enter →' : '')}
               </span>
-              <span>{year}</span>
+              <span>{title}</span>
             </motion.a>
           ))}
         </motion.div>

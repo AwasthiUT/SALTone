@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo, memo } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { CreativeMetadataItem, CreativeSection } from '@/lib/supabase/creative'
+import { createClient } from '@/utils/supabase/client'
+import { insertSubscriber } from '@/lib/supabase/newsletter'
 
 const PHOTO_STILLS = [
     { src: 'https://images.unsplash.com/photo-1516805361833-2194e803c035?q=80&w=2835&auto=format&fit=crop', label: 'Street' },
@@ -389,7 +391,11 @@ function renderPhotosSection(section: CreativeSection) {
 
 function GridSection({ section }: { section: CreativeSection }) {
     const [activeYear, setActiveYear] = useState<string | null>(null)
-    const items = activeItems(section.metadata?.items)
+    const items = [...(section.metadata?.items ?? [])].sort((a, b) => {
+        const yearA = parseInt(a.title || '0')
+        const yearB = parseInt(b.title || '0')
+        return yearB - yearA
+    })
     const lines = sentenceParts(section.title, 'Every year. Every story.')
 
     return (
@@ -419,6 +425,7 @@ function GridSection({ section }: { section: CreativeSection }) {
                     {items.map((item, i) => {
                         const title = item.title ?? ''
                         const href = itemHref(item)
+                        const is_active = item.is_active !== false
 
                         return (
                             <motion.div
@@ -430,35 +437,41 @@ function GridSection({ section }: { section: CreativeSection }) {
                                 onMouseEnter={() => setActiveYear(title)}
                                 onMouseLeave={() => setActiveYear(null)}
                             >
-                                <Link href={href}>
-                                    <div className="relative group overflow-hidden cursor-pointer" style={{ aspectRatio: '2/3' }}>
+                                <Link
+                                    href={is_active ? href : '#'}
+                                    onClick={(e) => { if (!is_active) e.preventDefault() }}
+                                    className={!is_active ? 'cursor-default' : ''}
+                                >
+                                    <div className="relative group overflow-hidden" style={{ aspectRatio: '2/3', cursor: is_active ? 'pointer' : 'default' }}>
                                         <img
                                             src={itemImage(item)}
                                             alt={title}
-                                            className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105"
+                                            className={`w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700 ${is_active ? 'group-hover:scale-105' : 'opacity-40'}`}
                                         />
 
                                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
-                                        <motion.div
-                                            className="absolute inset-0 border border-white/0 group-hover:border-white/40 transition-colors duration-500"
-                                        />
+                                        {is_active && (
+                                            <motion.div
+                                                className="absolute inset-0 border border-white/0 group-hover:border-white/40 transition-colors duration-500"
+                                            />
+                                        )}
 
                                         <div className="absolute inset-x-0 bottom-0 p-4">
                                             <p
-                                                className="text-3xl sm:text-4xl text-white leading-none mb-1"
+                                                className={`text-3xl sm:text-4xl text-white leading-none mb-1 ${!is_active ? 'opacity-40' : ''}`}
                                                 style={{ fontFamily: 'HelveticaBold', letterSpacing: '-0.03em' }}
                                             >
                                                 {title}
                                             </p>
                                             <motion.p
                                                 initial={{ opacity: 0, y: 8 }}
-                                                animate={activeYear === title ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+                                                animate={(!is_active || activeYear === title) ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
                                                 transition={{ duration: 0.3 }}
-                                                className="text-[10px] text-white/60 uppercase tracking-[0.15em]"
+                                                className="text-[10px] text-white/60 uppercase tracking-[0.3em]"
                                                 style={{ fontFamily: 'HelveticaBold' }}
                                             >
-                                                {href === '#' ? 'coming soon' : 'enter →'}
+                                                {!is_active ? 'Coming Soon' : 'enter →'}
                                             </motion.p>
                                         </div>
                                     </div>
@@ -553,8 +566,173 @@ function renderCompositeSection(section: CreativeSection) {
     )
 }
 
+const NewsletterForm = memo(({ fields }: { fields: any[] }) => {
+    const formRef = useRef<HTMLFormElement>(null)
+    const [submitted, setSubmitted] = useState(false)
+    const [loading, setLoading] = useState(false)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!formRef.current) return
+        
+        setLoading(true)
+        const formData = new FormData(formRef.current)
+        const data = Object.fromEntries(formData.entries())
+        
+        try {
+            const supabase = createClient()
+            const { error } = await insertSubscriber(supabase, data)
+            
+            if (error) {
+                console.error("Subscription error:", error)
+                alert("Something went wrong. Please try again.")
+            } else {
+                setSubmitted(true)
+            }
+        } catch (err) {
+            console.error("Submission failed:", err)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    if (submitted) {
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="py-12"
+            >
+                <p 
+                    className="text-2xl sm:text-4xl text-white tracking-tight"
+                    style={{ fontFamily: 'HelveticaBold', letterSpacing: '-0.02em' }}
+                >
+                    You're in.
+                </p>
+            </motion.div>
+        )
+    }
+
+    return (
+        <form
+            ref={formRef}
+            className="flex flex-col gap-4"
+            onSubmit={handleSubmit}
+        >
+            {fields.filter((f: any) => f.is_active !== false).map((field: any) => {
+                const commonClass = "w-full bg-white/[0.03] border border-white/10 px-6 py-4 text-white focus:border-white/40 focus:bg-white/[0.06] transition-all outline-none text-sm tracking-wide disabled:opacity-50";
+                
+                if (field.type === 'select') {
+                    return (
+                        <select
+                            key={field.name}
+                            name={field.name}
+                            required={field.required}
+                            disabled={loading}
+                            className={commonClass}
+                            defaultValue=""
+                            style={{ 
+                                fontFamily: 'HelveticaBold', 
+                                appearance: 'none',
+                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.3)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'right 1.5rem center',
+                                backgroundSize: '1rem'
+                            }}
+                        >
+                            <option key="placeholder" value="" disabled>{field.placeholder || field.label || field.title || field.name || 'Select option'}</option>
+                            {(field.options || field.items || field.choices || []).map((opt: any, idx: number) => {
+                                const isString = typeof opt === 'string';
+                                const val = isString ? opt : (opt.value || opt.id || opt.text || opt.title);
+                                const lbl = isString ? opt : (opt.label || opt.text || opt.title || opt.value || opt.name);
+                                
+                                return (
+                                    <option key={val || idx} value={val} className="bg-[#080808]">
+                                        {lbl}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                    );
+                }
+
+                return (
+                    <input
+                        key={field.name}
+                        name={field.name}
+                        type={field.type || 'text'}
+                        placeholder={field.placeholder || field.title || field.label || 'Enter details...'}
+                        required={field.required}
+                        disabled={loading}
+                        className={commonClass}
+                        style={{ fontFamily: 'HelveticaBold' }}
+                    />
+                );
+            })}
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full px-8 py-5 bg-white text-black uppercase tracking-[0.25em] text-[10px] font-bold hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'HelveticaBold' }}
+            >
+                {loading ? "Joining..." : "Join"}
+            </button>
+        </form>
+    )
+})
+
+NewsletterForm.displayName = 'NewsletterForm'
+
+function renderNewsletterSection(section: CreativeSection) {
+    const fields = section?.metadata?.fields || [];
+
+    return (
+        <section id={section.section_key} className="relative w-full px-6 sm:px-16 py-20 overflow-hidden">
+            {/* Ambient background gradients */}
+            <div className="absolute inset-0 -z-10 overflow-hidden">
+                <div className="absolute -top-24 -left-24 w-[600px] h-[600px] bg-purple-600/5 rounded-full blur-[100px]" />
+                <div className="absolute -bottom-48 -right-24 w-[700px] h-[700px] bg-indigo-600/5 rounded-full blur-[100px]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#080808_100%)]" />
+            </div>
+
+            <RevealSection className="max-w-[1600px] mx-auto text-center relative z-10">
+                <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-white/30 mb-8" style={{ fontFamily: 'HelveticaBold' }}>
+                    {section.subtitle}
+                </p>
+                <h2
+                    className="text-5xl sm:text-7xl lg:text-8xl leading-[0.92] tracking-tight text-white mb-8"
+                    style={{ fontFamily: 'HelveticaBold', letterSpacing: '-0.05em' }}
+                >
+                    <span className="inline-block bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent">
+                        {section.title}
+                    </span>
+                </h2>
+                <p className="text-lg sm:text-xl text-white/40 max-w-2xl mx-auto leading-relaxed mb-12" style={{ fontFamily: 'GlacialIndifferenceItalic' }}>
+                    {section.description}
+                </p>
+
+                <div className="mt-12 max-w-lg mx-auto relative">
+                    {/* Simplified container */}
+                    <div className="absolute inset-0 bg-white/[0.01] border border-white/5 rounded-3xl -m-8 sm:-m-12 pointer-events-none" />
+
+                    <div className="relative">
+                        <NewsletterForm fields={fields} />
+                        <p className="mt-8 text-[10px] text-white/15 uppercase tracking-[0.3em] font-medium" style={{ fontFamily: 'HelveticaBold' }}>
+                            Limited editions. Behind the scenes. No noise.
+                        </p>
+                    </div>
+                </div>
+            </RevealSection>
+        </section>
+    )
+}
+
 function renderSection(section: CreativeSection) {
     console.log("Rendering section:", section.section_key)
+
+    if (section.section_key === 'newsletter') {
+        return renderNewsletterSection(section)
+    }
 
     switch (section.section_type) {
         case 'stats':
@@ -577,7 +755,18 @@ function renderSection(section: CreativeSection) {
 export default function CreativeSections({ sections }: { sections?: CreativeSection[] }) {
     const marqueeItems = ['Cinema', 'Photography', 'Direction', 'Editing', 'Frames', 'Stories', 'Archives', 'Moments', 'Craft']
     const archiveMarqueeItems = ['2018', '2019', '2020', '2021', '2022', '2023', '2024', 'Still going', 'Never done']
-    const renderedSections = sections ?? DEFAULT_SECTIONS
+    const rawSections = sections ?? DEFAULT_SECTIONS
+    
+    // Use useMemo to avoid re-sorting sections on every keystroke
+    const renderedSections = useMemo(() => {
+        const list = [...rawSections]
+        const newsletterIdx = list.findIndex(s => s.section_key === 'newsletter')
+        if (newsletterIdx !== -1 && list.length > 1) {
+            const [newsletter] = list.splice(newsletterIdx, 1)
+            list.splice(list.length - 1, 0, newsletter)
+        }
+        return list
+    }, [rawSections])
 
     return (
         <div className="relative z-10 bg-[#080808]">
