@@ -36,13 +36,51 @@ type CreativeBackground = {
   device_type?: string | null
 }
 
+/**
+ * HomeV4 — The Split World Landing Page
+ * 
+ * ──────────────────────────────────────────────────────────────────────────────
+ * WHAT WE DID TODAY:
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 1. SUPABASE INTEGRATION:
+ *    - Created lib/supabase/v4.ts to fetch dynamic content from 'main_v4' table.
+ *    - Linked Headlines, Subtext, Eyebrows (subtitles), and Footers (links) to DB.
+ *    - Implemented metadata-driven tags for both worlds (creative/technical).
+ * 
+ * 2. NEWSLETTER REFACTOR:
+ *    - Integrated newsletter form with Supabase (insertSubscriber).
+ *    - Fixed "Typing Lag" by switching to uncontrolled inputs (useRef + FormData).
+ *    - Optimized background GPU load by removing expensive backdrop-blur-2xl and 
+ *      simplifying ambient animations.
+ * 
+ * 3. MOBILE BUG FIXES:
+ *    - Fixed "Half-Screen" bug where sections didn't expand to 100vh on selection.
+ *    - Fixed "Phantom Scroll" bug where unselected sides left dead space.
+ *    - Used 'display: none !important' on unselected sides to ensure a clean, 
+ *      top-aligned full-screen view for the active mode.
+ * ──────────────────────────────────────────────────────────────────────────────
+ */
+
 export default function HomeV4({ 
   creativeSections = [], 
-  technicalSections = [] 
+  technicalSections = [],
+  mainV4Data = []
 }: { 
   creativeSections?: CreativeSection[], 
-  technicalSections?: TechnicalSection[] 
+  technicalSections?: TechnicalSection[],
+  mainV4Data?: any[]
 }) {
+  const creativeData = mainV4Data?.find(d => d.side === "creative");
+  const technicalData = mainV4Data?.find(d => d.side === "technical");
+
+  const creativeTags = creativeData?.metadata?.tags?.filter((t: any) => t.is_active !== false) || [];
+  const technicalTags = technicalData?.metadata?.tags?.filter((t: any) => t.is_active !== false) || [];
+
+  // console.log("Creative side:", creativeData);
+  // console.log("Technical side:", technicalData);
+  // console.log("Creative tags:", creativeTags);
+  // console.log("Technical tags:", technicalTags);
+
   const [background, setBackground] = useState<CreativeBackground | null>(null)
   const [hovered,    setHovered]    = useState<'left' | 'right' | null>(null)
   const [selected,   setSelected]   = useState<'left' | 'right' | null>(null)
@@ -431,7 +469,11 @@ export default function HomeV4({
           .v4-headline    { font-size: clamp(2rem, 8vw, 3rem); }
           .v4-landing-content { padding: 2rem 1.75rem 1.5rem; }
           .v4-root.selected-left  .v4-right,
-          .v4-root.selected-right .v4-left { min-height: 0; }
+          .v4-root.selected-right .v4-left,
+          .v4-root.selected-left  .v4-divider,
+          .v4-root.selected-right .v4-divider { display: none !important; }
+          .v4-root.selected-left  .v4-left,
+          .v4-root.selected-right .v4-right { min-height: 100dvh; flex: 1 !important; }
         }
       `}</style>
 
@@ -487,18 +529,29 @@ export default function HomeV4({
             }}
           >
             <div>
-              <p className="v4-eyebrow">creative world</p>
+              <p className="v4-eyebrow">{creativeData?.subtitle || "creative world"}</p>
               <h1 className="v4-headline">
-                Chaotic.<br />Expressive.<br />Alive.
+                {creativeData?.title ? (
+                  <span dangerouslySetInnerHTML={{ __html: creativeData.title.replace(/\n/g, '<br />') }} />
+                ) : (
+                  <>Chaotic.<br />Expressive.<br />Alive.</>
+                )}
               </h1>
               <p className="v4-subtext">
-                Films, archives, experiments — a living document of things felt
-                before they were understood. 2018 until now.
+                {creativeData?.description || "Films, archives, experiments — a living document of things felt before they were understood. 2018 until now."}
               </p>
               <div className="v4-tags" aria-label="Topics">
-                {['films', 'archives', 'experiments', '2018–now'].map((t) => (
-                  <span key={t} className="v4-tag">{t}</span>
-                ))}
+                {(creativeData?.metadata?.tags?.filter((t: any) => t.is_active !== false) || []).length > 0 ? (
+                  creativeData.metadata.tags
+                    .filter((t: any) => t.is_active !== false)
+                    .map((t: any, i: number) => (
+                      <span key={i} className="v4-tag">{t.text}</span>
+                    ))
+                ) : (
+                  ['films', 'archives', 'experiments', '2018–now'].map((t) => (
+                    <span key={t} className="v4-tag">{t}</span>
+                  ))
+                )}
               </div>
               <button
                 id="v4-enter-chaos-btn"
@@ -506,11 +559,11 @@ export default function HomeV4({
                 onClick={(e) => { e.stopPropagation(); handleSelect('left') }}
                 aria-label="Enter the creative world"
               >
-                enter the chaos →
+                {creativeData?.cta_text || "enter the chaos"} →
               </button>
             </div>
             <p className="v4-footer-line">
-              built by a weirdo → technical side lives next door
+              {creativeData?.link || "built by a weirdo → technical side lives next door"}
             </p>
           </div>
 
@@ -554,18 +607,29 @@ export default function HomeV4({
             }}
           >
             <div>
-              <p className="v4-eyebrow">technical world</p>
+              <p className="v4-eyebrow">{technicalData?.subtitle || "technical world"}</p>
               <h1 className="v4-headline">
-                Precise.<br />Thoughtful.<br />Deployable.
+                {technicalData?.title ? (
+                  <span dangerouslySetInnerHTML={{ __html: technicalData.title.replace(/\n/g, '<br />') }} />
+                ) : (
+                  <>Precise.<br />Thoughtful.<br />Deployable.</>
+                )}
               </h1>
               <p className="v4-subtext">
-                Full-stack systems, shipped products, and the kind of work that
-                actually runs in production. Skills applied with intent.
+                {technicalData?.description || "Full-stack systems, shipped products, and the kind of work that actually runs in production. Skills applied with intent."}
               </p>
               <div className="v4-tags" aria-label="Disciplines">
-                {['full-stack', 'systems', 'product', 'available'].map((c) => (
-                  <span key={c} className="v4-tag">{c}</span>
-                ))}
+                {(technicalData?.metadata?.tags?.filter((t: any) => t.is_active !== false) || []).length > 0 ? (
+                  technicalData.metadata.tags
+                    .filter((t: any) => t.is_active !== false)
+                    .map((t: any, i: number) => (
+                      <span key={i} className="v4-tag">{t.text}</span>
+                    ))
+                ) : (
+                  ['full-stack', 'systems', 'product', 'available'].map((c) => (
+                    <span key={c} className="v4-tag">{c}</span>
+                  ))
+                )}
               </div>
               <button
                 id="v4-see-work-btn"
@@ -573,11 +637,11 @@ export default function HomeV4({
                 onClick={(e) => { e.stopPropagation(); handleSelect('right') }}
                 aria-label="See the technical work"
               >
-                see the work →
+                {technicalData?.cta_text || "see the work"} →
               </button>
             </div>
             <p className="v4-footer-line">
-              this site was built by a weirdo — see the other side →
+              {technicalData?.link || "this site was built by a weirdo — see the other side →"}
             </p>
           </div>
 

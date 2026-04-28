@@ -5,6 +5,7 @@ import HomeV1 from './page_v1'
 import HomeV4 from './page_v4'
 import { getCreativeSections } from '@/lib/supabase/creative'
 import { getTechnicalSections } from '@/lib/supabase/technical'
+import { getMainV4Data } from '@/lib/supabase/v4'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,12 +51,21 @@ export default async function Page() {
   if (version === 'v4') {
     const creativeSections = await getCreativeSections()
     const technicalSections = await getTechnicalSections()
-    
-    const newsletter = creativeSections.find(s => s.section_key === "newsletter");
-    console.log("Newsletter section (Landing):", newsletter);
+    const mainV4Data = await getMainV4Data()
 
-    console.log("Technical Page Data (Landing):", technicalSections)
-    return <HomeV4 creativeSections={creativeSections} technicalSections={technicalSections} />
+    const newsletter = creativeSections.find(s => s.section_key === "newsletter");
+    // console.log("Newsletter section (Landing):", newsletter);
+
+    // console.log("Technical Page Data (Landing):", technicalSections)
+    // console.log("Landing V4:", mainV4Data)
+
+    return (
+      <HomeV4
+        creativeSections={creativeSections}
+        technicalSections={technicalSections}
+        mainV4Data={mainV4Data ?? []}
+      />
+    )
   }
 
   // Render current iteration (v3 default)

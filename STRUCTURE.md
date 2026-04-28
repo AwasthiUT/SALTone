@@ -8,32 +8,22 @@ This document provides a comprehensive map of the SALTone codebase and explains 
 SALTone/
 ├── app/                       # Next.js App Router (Routes)
 │   ├── page.tsx               # Orchestrator for the Landing Page (Dual-Mode)
-│   ├── page_v1.tsx            # Backup of the original landing page
-│   ├── layout.tsx             # Root layout (fonts, global providers)
-│   ├── globals.css            # Global styles, Tailwind directives, keyframes
-│   ├── movies/                # route: /movies
-│   │   └── page.tsx           # Fetches movies and renders MoviesUI
-│   ├── gallery/[id]/          # route: /gallery/:id
-│   │   └── page.tsx           # Fetches gallery data for a specific movie
-│   └── years/[year]/          # route: /years/:year
-│       └── page.tsx           # Main gallery for yearly events (YearUI3)
+│   ├── page_v4.tsx            # NEW: Split-world landing with dynamic data
+│   ├── creative/              # route: /creative (Individual Creative Mode)
+│   ├── work/                  # route: /work (Individual Pro Mode)
+│   └── ...                    # movies, gallery, years
 ├── components/                # React Components
 │   ├── landing/               # Sub-components for the Landing Page
-│   │   ├── ModeToggle.tsx     # Toggle switch (Pro vs. Creative Mode)
-│   │   ├── HeroSection.tsx    # Responsive hero with mode-specific text
-│   │   ├── FluidBackground.tsx# Canvas-based liquid paint effect (Creative)
-│   │   ├── SkillBalls.tsx     # Dropping skill icons animation
-│   │   ├── ProfessionalSections.tsx # Multi-section content for Pro Mode
-│   │   ├── CreativeSections.tsx # Multi-section cinematic content for Creative Mode
-│   │   └── WorkContent.tsx    # Comprehensive Professional profile (/work)
-│   ├── YearUI3.tsx            # Sophisticated Masonry Jigsaw for events
-│   ├── MoviesUI.tsx           # Grid layout for movies/films
-│   └── GalleryView.tsx        # Standard image gallery viewer
+│   │   ├── CreativeSections.tsx # Multi-section cinematic content (Includes Newsletter)
+│   │   ├── NewsletterForm.tsx # High-performance uncontrolled form
+│   │   └── ...
 ├── lib/supabase/              # Data fetching logic
-│   ├── movies.ts              # getMovies()
-│   ├── years.ts               # getYearData()
-│   └── gallery.ts             # getGalleryData()
+│   ├── creative.ts            # getCreativeSections()
+│   ├── technical.ts           # getTechnicalSections()
+│   ├── v4.ts                  # NEW: getMainV4Data()
+│   └── newsletter.ts          # NEW: insertSubscriber()
 ├── utils/supabase/            # Supabase auth & client configuration
+└── ...
 │   ├── client.ts              # Browser-side client
 │   └── server.ts              # Server-side client for RSC
 ├── public/                    # Static assets (SVGs, Images)
@@ -75,4 +65,4 @@ The `YearUI3.tsx` component implements a unique, gapless masonry grid.
     - `GlacialIndifferenceItalic`: Used for supporting body text.
 
 ---
-*Updated on 2026-04-27*
+*Updated on 2026-04-28*

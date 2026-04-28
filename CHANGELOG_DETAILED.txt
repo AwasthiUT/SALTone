@@ -124,4 +124,32 @@
 - **How:** Implemented Intersection Observers (via a custom `Reveal` component) to trigger animations as sections enter the viewport, ensuring a "wow" factor on every scroll.
 
 ---
+
+## Date & Time: 2026-04-28 18:25 (IST)
+## Title: Creative Newsletter & V4 Landing Page Optimization
+
+### 1. Dynamic Newsletter Engine (`components/landing/NewsletterForm.tsx`)
+- **What:** Rebuilt the newsletter subscription form to be 100% database-driven and performance-optimized.
+- **Why:** To allow dynamic form fields (Name, Email, Interest, etc.) via Supabase and resolve typing lag.
+- **How:** 
+  - **Uncontrolled Inputs:** Switched from React state to `useRef` and `FormData`. This stopped component re-renders on every keystroke, completely eliminating typing lag.
+  - **GPU Optimization:** Removed `backdrop-blur-2xl` and simplified background motion to reduce GPU overhead during text entry.
+  - **Supabase Integration:** Connected to `newsletter_subscribers` table with a new `insertSubscriber` helper in `lib/supabase/newsletter.ts`.
+
+### 2. V4 "Split World" Landing Page Orchestration (`app/page_v4.tsx`)
+- **What:** Migrated the split-world landing page from hardcoded text to a fully dynamic, backend-controlled model.
+- **Why:** To allow instant content updates (Headlines, Tags, CTAs) via the `main_v4` table without code changes.
+- **How:** 
+  - Created `lib/supabase/v4.ts` for data fetching.
+  - Updated the landing orchestrator (`app/page.tsx`) to fetch and inject `mainV4Data` into the component.
+  - Implemented dynamic mapping for Headlines (with newline support), Subtitles, Footers, and Tags.
+
+### 3. Mobile UX & Layout Bug Fixes
+- **What:** Resolved critical layout issues on mobile devices during the V4 split-transition.
+- **Why:** On mobile, clicking a side would previously only expand it to 50% height, and unselected sections left empty "phantom" scroll space.
+- **How:** 
+  - **Expansion:** Forced the selected side to `min-height: 100dvh` on click.
+  - **Cleanup:** Used `display: none !important` on unselected sides and the divider once a mode is active, ensuring the chosen world starts at `y=0` and fills the screen.
+
+---
 *Note: This file will be updated every time changes are made to the codebase to maintain a clear history of technical decisions.*

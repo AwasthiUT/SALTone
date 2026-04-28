@@ -684,7 +684,9 @@ const NewsletterForm = memo(({ fields }: { fields: any[] }) => {
 NewsletterForm.displayName = 'NewsletterForm'
 
 function renderNewsletterSection(section: CreativeSection) {
+    // console.log("Rendering newsletter text:", section);
     const fields = section?.metadata?.fields || [];
+    // console.log("Newsletter fields:", fields);
 
     return (
         <section id={section.section_key} className="relative w-full px-6 sm:px-16 py-20 overflow-hidden">
@@ -760,6 +762,10 @@ export default function CreativeSections({ sections }: { sections?: CreativeSect
     // Use useMemo to avoid re-sorting sections on every keystroke
     const renderedSections = useMemo(() => {
         const list = [...rawSections]
+        const newsletter = list?.find(s => s.section_key === "newsletter");
+        // if (newsletter) console.log("Newsletter section (Source):", newsletter);
+
+        // console.log('Creative Sections:', list)
         const newsletterIdx = list.findIndex(s => s.section_key === 'newsletter')
         if (newsletterIdx !== -1 && list.length > 1) {
             const [newsletter] = list.splice(newsletterIdx, 1)
