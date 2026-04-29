@@ -21,5 +21,12 @@ export async function getMainV4Data() {
     return null
   }
 
+  if (data) {
+    const chatbot = data.find(d => d.side === "chatbot");
+    console.log("Chatbot row:", chatbot);
+    const chatbotConfig = chatbot?.metadata || {};
+    console.log("Chatbot config:", chatbotConfig);
+  }
+
   return data
 }
