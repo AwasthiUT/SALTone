@@ -106,28 +106,26 @@ export async function POST(req: Request) {
     - If the user asks you to forget an explicit fact, use this tag: [REMOVE_FACT: The fact to remove].
   `
 
-  // Provide a default list of robust fallback models based on Groq's available models
-  let modelsToTry = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+  // Fetch available models from our new robust configuration table
+  const { data: availableModelsData, error: modelsError } = await supabase
+    .from('chatbot_models')
+    .select('*')
+    .eq('is_active_admin', true)
+    .order('priority', { ascending: true })
 
-  // If the user specified a custom array of models in DB metadata
-  if (Array.isArray(chatbotConfig.models) && chatbotConfig.models.length > 0) {
-    modelsToTry = chatbotConfig.models
-  } else if (typeof chatbotConfig.model === 'string') {
-    modelsToTry = Array.from(new Set([chatbotConfig.model, "llama-3.1-8b-instant"]))
+  let modelsToTry = []
+  
+  if (!modelsError && availableModelsData && availableModelsData.length > 0) {
+    // Filter out models that are currently temporarily banned by the bot
+    const now = new Date()
+    const activeModels = availableModelsData.filter(m => {
+      if (!m.bot_disabled_until) return true;
+      return new Date(m.bot_disabled_until) < now;
+    })
+    modelsToTry = activeModels.map(m => m.model_name)
   }
 
-  // Fetch currently disabled models from our database (models that hit rate limits)
-  const { data: disabledData } = await supabase
-    .from('disabled_models')
-    .select('model_name')
-    .gt('disabled_until', new Date().toISOString())
-
-  const currentlyDisabledModels = disabledData?.map(d => d.model_name) || []
-
-  // Remove disabled models from our try list to prevent wasting time!
-  modelsToTry = modelsToTry.filter(m => !currentlyDisabledModels.includes(m))
-
-  // If literally every model is banned right now, inject the instant model as a final desperate fallback
+  // Fallback if the database fails or is empty
   if (modelsToTry.length === 0) {
     modelsToTry = ["llama-3.1-8b-instant"]
   }
@@ -135,6 +133,7 @@ export async function POST(req: Request) {
   let data;
   let success = false;
   let lastError = null;
+  let successfulModelRow = null;
 
   for (const model of modelsToTry) {
     try {
@@ -161,13 +160,18 @@ export async function POST(req: Request) {
         data = await response.json();
         success = true;
         console.log(`Successfully generated response using model: ${model}`);
+        
+        // Grab the row data so we can update analytics later
+        if (availableModelsData) {
+          successfulModelRow = availableModelsData.find(m => m.model_name === model);
+        }
         break; // Stop looping, we got a successful response!
       } else {
         const errorData = await response.json();
         const errorMsg = errorData.error?.message || String(errorData)
         console.warn(`Model ${model} failed:`, errorMsg);
         lastError = errorData;
-
+        
         // Parse Groq's exact timeout (e.g. "Please try again in 13m45.984s")
         let disabledUntil = new Date(Date.now() + 60 * 60 * 1000) // Default to 1 hour
         const timeMatch = errorMsg.match(/try again in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)/)
@@ -178,17 +182,15 @@ export async function POST(req: Request) {
           const msToAdd = (hours * 3600 + minutes * 60 + seconds) * 1000
           disabledUntil = new Date(Date.now() + msToAdd)
           console.log(`Parsed timeout for ${model}. Disabling until ${disabledUntil.toISOString()}`)
-        } else if (errorMsg.includes('decommissioned')) {
-          // If the model is permanently dead, ban it for 30 days
-          disabledUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        } else if (errorMsg.includes('decommissioned') || errorMsg.includes('does not exist')) {
+          disabledUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
         }
 
-        // Save the ban to the database so future requests instantly skip this model
-        await supabase.from('disabled_models').upsert({
-          model_name: model,
-          disabled_until: disabledUntil.toISOString()
-        })
-
+        // Auto-ban the model by setting bot_disabled_until
+        await supabase.from('chatbot_models').update({
+          bot_disabled_until: disabledUntil.toISOString()
+        }).eq('model_name', model)
+        
         // The loop will continue and try the next model
       }
     } catch (e) {
@@ -201,6 +203,37 @@ export async function POST(req: Request) {
   if (!success) {
     console.error("All fallback models failed. Last error:", lastError);
     return Response.json({ error: "Rate limits exceeded on all models. Please try again later." }, { status: 500 });
+  }
+
+  // Asynchronously update our analytics for the successful model
+  if (successfulModelRow) {
+    // We don't await this so it doesn't block the user's response time!
+    (async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        let currentHits = successfulModelRow.hits_today || 0;
+        let lastDate = successfulModelRow.last_updated_date || todayStr;
+        let historical = successfulModelRow.historical_stats || {};
+
+        if (lastDate !== todayStr) {
+          // It's a new day! Archive yesterday's hits into the historical JSON
+          historical[lastDate] = currentHits;
+          currentHits = 1; // Reset to 1 for today
+          lastDate = todayStr;
+        } else {
+          currentHits += 1;
+        }
+
+        const supabaseAsync = await import('@/utils/supabase/server').then(m => m.createClient())
+        await supabaseAsync.from('chatbot_models').update({
+          hits_today: currentHits,
+          last_updated_date: lastDate,
+          historical_stats: historical
+        }).eq('model_name', successfulModelRow.model_name);
+      } catch (err) {
+        console.error("Failed to update model analytics:", err);
+      }
+    })();
   }
 
   try {
