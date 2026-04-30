@@ -18,11 +18,24 @@ export const metadata: Metadata = {
   description: "A blend of creative chaos and technical precision.",
 };
 
-export default function RootLayout({
+import { createClient } from '@/utils/supabase/server'
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient()
+  
+  // Check if chatbot is active in main_v4
+  const { data } = await supabase
+    .from('main_v4')
+    .select('is_active')
+    .eq('side', 'chatbot')
+    .single()
+    
+  const isChatbotActive = data?.is_active ?? false
+
   return (
     <html
       lang="en"
@@ -30,7 +43,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <ChatBot />
+        {isChatbotActive && <ChatBot />}
       </body>
     </html>
   );

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 const ThinkingStatus = () => {
   const [status, setStatus] = useState('Thinking')
   const statuses = ['Thinking', 'Analyzing', 'Formulating', 'Crafting']
-
+  
   useEffect(() => {
     const interval = setInterval(() => {
       setStatus(prev => {
@@ -16,7 +16,7 @@ const ThinkingStatus = () => {
     }, 400)
     return () => clearInterval(interval)
   }, [])
-
+  
   return <>{status}</>
 }
 
@@ -30,8 +30,47 @@ export default function ChatBot() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [browserId, setBrowserId] = useState<string | null>(null)
+  const [showWelcome, setShowWelcome] = useState(false)
+  const [userName, setUserName] = useState<string>("Stranger")
+  const [isRecognizedByIp, setIsRecognizedByIp] = useState(false)
+  const [customGreeting, setCustomGreeting] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  // 1. Initialize Browser ID and Check Identity
+  useEffect(() => {
+    // Browser ID logic
+    let bid = localStorage.getItem('ut_visitor_id')
+    if (!bid) {
+      bid = crypto.randomUUID()
+      localStorage.setItem('ut_visitor_id', bid)
+    }
+    setBrowserId(bid)
+
+    // Fetch identity based on browser ID or IP
+    fetch(`/api/chat?browserId=${bid}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.userName) setUserName(data.userName)
+        if (data.isRecognizedByIp) setIsRecognizedByIp(true)
+        if (data.customGreeting) setCustomGreeting(data.customGreeting)
+      })
+      .catch(err => console.error("Failed to fetch identity", err))
+
+    // We no longer load 'ut_chat_history' here to ensure a fresh start
+  }, [])
+
+  // 2. Welcome Popup Logic (1 second after mount or opening)
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      const timer = setTimeout(() => {
+        setShowWelcome(true)
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen, messages.length])
+
+  // We no longer save history to localStorage here
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -39,26 +78,31 @@ export default function ChatBot() {
     }
   }, [messages])
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return
+  const handleSend = async (overrideMessage?: string) => {
+    const messageToSend = overrideMessage || input.trim()
+    if (!messageToSend || isLoading) return
 
-    const userMessage: Message = { role: 'user', content: input.trim() }
+    // If they clicked the confirmation button, we might want to just handle it
+    const isConfirmation = messageToSend === 'Yes, that is me!'
+
+    const userMessage: Message = { role: 'user', content: messageToSend }
     const updatedMessages = [...messages, userMessage]
-
-    setInput('')
+    
+    if (!overrideMessage) setInput('')
     setMessages(updatedMessages)
     setIsLoading(true)
-
-    const startTime = Date.now()
+    setShowWelcome(false)
 
     try {
       const responsePromise = fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages }),
+        body: JSON.stringify({ 
+          messages: updatedMessages,
+          browserId: browserId 
+        }),
       })
 
-      // Ensure at least 1.5s of "thinking" time for impact
       const [response] = await Promise.all([
         responsePromise,
         new Promise(resolve => setTimeout(resolve, 1500))
@@ -80,6 +124,20 @@ export default function ChatBot() {
 
   const clearHistory = () => {
     setMessages([])
+    setShowWelcome(true)
+    setCustomGreeting(null) // Clear old greeting while loading
+
+    // Re-fetch identity in case facts or name changed during the session
+    if (browserId) {
+      fetch(`/api/chat?browserId=${browserId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.userName) setUserName(data.userName)
+          if (data.isRecognizedByIp) setIsRecognizedByIp(true)
+          if (data.customGreeting) setCustomGreeting(data.customGreeting)
+        })
+        .catch(err => console.error("Failed to fetch identity", err))
+    }
   }
 
   return (
@@ -100,14 +158,14 @@ export default function ChatBot() {
               </div>
               <div className="flex items-center gap-3">
                 {messages.length > 0 && (
-                  <button
+                  <button 
                     onClick={clearHistory}
                     className="text-[9px] uppercase tracking-tighter text-white/20 hover:text-red-400 transition-colors"
                   >
                     Clear
                   </button>
                 )}
-                <button
+                <button 
                   onClick={() => setIsOpen(false)}
                   className="text-white/40 hover:text-white transition-colors"
                 >
@@ -119,25 +177,66 @@ export default function ChatBot() {
             </div>
 
             {/* Messages */}
-            <div
+            <div 
               ref={scrollRef}
               className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide"
             >
-              {messages.length === 0 && (
+              {messages.length === 0 && !showWelcome && (
                 <div className="text-center mt-10">
-                  <p className="text-[11px] text-white/30 italic uppercase tracking-wider">Ask me anything about Utkarsh</p>
+                  <p className="text-[11px] text-white/30 italic uppercase tracking-wider">Connecting to Memory...</p>
                 </div>
               )}
+
+              <AnimatePresence>
+                {showWelcome && messages.length === 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-4"
+                  >
+                    <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                      <p className="text-xs text-white/80 leading-relaxed mb-3 font-medium">
+                        {userName === "Stranger" 
+                          ? "Hey! I'm UT's digital shadow. What's your name?"
+                          : isRecognizedByIp 
+                            ? `You look familiar... are you ${userName}?` 
+                            : customGreeting 
+                              ? customGreeting 
+                              : `Welcome back, ${userName}. Good to see you again.`}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {(userName === "Stranger" 
+                          ? ['I prefer to stay anonymous', 'Who are you?']
+                          : isRecognizedByIp
+                            ? ['Yes, that is me!', 'No, I am someone else']
+                            : ['What are you working on?', 'Tell me a secret']
+                        ).map(q => (
+                          <button 
+                            key={q}
+                            onClick={() => handleSend(q)}
+                            className="text-[10px] bg-white/10 hover:bg-white/20 text-white/60 px-3 py-1.5 rounded-full border border-white/5 transition-colors"
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-xl px-3 py-2 text-xs leading-relaxed ${m.role === 'user'
-                    ? 'bg-white/10 text-white border border-white/5'
-                    : 'bg-white/5 text-white/80 border border-white/5'
-                    }`}>
+                  <div className={`max-w-[80%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                    m.role === 'user' 
+                      ? 'bg-white/10 text-white border border-white/5' 
+                      : 'bg-white/5 text-white/80 border border-white/5'
+                  }`}>
                     {m.content}
                   </div>
                 </div>
               ))}
+
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-white/5 rounded-xl px-3 py-2 border border-white/5">
@@ -147,7 +246,7 @@ export default function ChatBot() {
                         <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="h-1 w-1 rounded-full bg-white/40" />
                         <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="h-1 w-1 rounded-full bg-white/40" />
                       </div>
-                      <motion.span
+                      <motion.span 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className="text-[8px] uppercase tracking-[0.2em] text-white/20 font-bold"
@@ -163,7 +262,7 @@ export default function ChatBot() {
             {/* Input */}
             <div className="p-4 border-t border-white/10 bg-white/5">
               <div className="relative flex items-center">
-                <input
+                <input 
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -171,8 +270,8 @@ export default function ChatBot() {
                   placeholder="Type a message..."
                   className="w-full bg-white/5 border border-white/10 rounded-full px-4 py-2 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 transition-colors"
                 />
-                <button
-                  onClick={handleSend}
+                <button 
+                  onClick={() => handleSend()}
                   disabled={isLoading}
                   className="absolute right-2 text-white/40 hover:text-white transition-colors disabled:opacity-50"
                 >
