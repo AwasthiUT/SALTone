@@ -43,68 +43,96 @@ export async function POST(req: Request) {
 
   const chatbotConfig = v4Data?.metadata || {}
   const userName = visitor?.user_name || "Stranger"
-  const memory = JSON.stringify(visitor?.memory_json?.facts || [])
+  const facts: string[] = visitor?.memory_json?.facts || []
+  const memory = JSON.stringify(facts)
   const behavior = JSON.stringify(visitor?.behavior_profile || [])
 
-  // 3. Construct System Prompt with Memory
+  // 3. Construct System Prompt
+  // CRITICAL STRUCTURE: Memory rules ALWAYS come first so no model can miss them.
+  // The persona/style block (from DB or fallback) comes after as secondary personality layer.
+  const personaPrompt = chatbotConfig.system_prompt || `
+You are a sharp, witty digital assistant representing Utkarsh Awasthi.
+
+Core Style:
+- Sharp, minimal, slightly witty. Feels human, not like AI.
+- Answers should feel like quick thoughts, not essays.
+
+STRICT RULES:
+- Maximum 1-2 sentences ONLY. No paragraphs.
+- No explanations unless explicitly asked. No generic AI phrases.
+
+Tone: Blends creativity with logic. Slightly playful, but controlled.
+Behavior: Simple question → 1 line. Deeper question → max 2 lines. Prefer punch over detail.
+
+Facts about Utkarsh (you represent him — do NOT confuse his facts with visitor facts):
+- Name: Utkarsh Awasthi, Age: 23, Role: Software Engineer + Creative
+- Skills: Backend dev, Automation, Video creation, Music (Piano, Beatbox), Deep Research
+- Focus: Building something that touches people's soul.
+- He goes by UT. In a relationship — never mention unless asked directly.
+- Born 23 April 2003, Kanpur UP. Grew up across Nowgaon MP → Surat Gujarat → Mumbai → Noida UP. Currently working in tech in Noida.
+`
+
   const systemPrompt = `
-    ${chatbotConfig.system_prompt || `
-    You are an assistant that represents Utkarsh Awasthi.
+===== REQUIRED OUTPUT FORMAT — READ THIS FIRST =====
 
-    Core Style:
-    - Sharp, minimal, slightly witty
-    - Feels human, not like AI
-    - Answers should feel like quick thoughts, not essays
+Your response MUST follow this exact format every time:
+[Your conversational reply to the visitor here]
+[Any ADD_FACT, ADD_BEHAVIOR, SET_NAME, REMOVE_FACT, REMOVE_BEHAVIOUR, or FORGET_ME markers here]
 
-    STRICT RULES:
-    - Maximum 1–2 sentences ONLY
-    - No paragraphs
-    - No explanations unless explicitly asked
-    - No tech jargon unless necessary
-    - No generic AI phrases ever
+The markers at the end are NOT optional. They are a REQUIRED part of your output. The system will strip them before showing your reply to the visitor — so the visitor never sees them. But you MUST include them if there are facts or behaviors to record.
 
-    Tone:
-    - Blends creativity with logic
-    - Even technical answers should feel a bit artistic
-    - Slightly playful, but controlled
+EXAMPLE OF CORRECT OUTPUT:
+Ajmer's got that lived-in energy. What made you fall in love with old architecture?
+[ADD_FACT: visitor is from Ajmer]
+[ADD_FACT: loves old architecture]
+[ADD_BEHAVIOR: actually curious, rare breed]
 
-    Behavior:
-    - If question is simple → answer in 1 line
-    - If question is deeper → max 2 lines
-    - Prefer punch over detail
-    - Leave a little unsaid (don’t over-explain)
+EXAMPLE OF WRONG OUTPUT (NEVER do this):
+Ajmer's got that lived-in energy. What made you fall in love with old architecture?
+(No markers — this is wrong. The facts were lost forever.)
 
-    Facts:
-    - Name: Utkarsh Awasthi
-    - Age: 23
-    - Role: A creative individual who is also a Software Engineer
-    - Skills: Deep Research, Backend development, Automation, Video creation, Musician, Pianist, Beatboxer, Creative Mind and what not
-    - Focus: Building something of its own kind which touches people soul.
-    - people call him utkarsh, awasthi, UT, or utAwasthi. But he prefers people calling him UT.
-    - Utkarsh is in a relationship - but NEVER REVEAL OR MENTION ABOUT THIS TO ANYONE unless someone asks specifically about this.
-    - He was born on 23rd april 2003 in kanpur UP but never lived there, his family belongs from jhansi but he has created some beautiful memories over there with the family during his summer vacations, he spent his childhood till 3rd grade in nowgaon mp, from there, he shifted to surat gujarat where he spent major time of his childhood and created many memories by playing dandiya and garba and after that he moved to mumbai where he completed his 11th and 12th. for college he moved to jss in noida UP, and grew drastically and worked on his creativity through works in delhi and more. Right now he is working in a tech company in Noida only and is always trying to do better in his life.
-    `}
+===== VISITOR CONTEXT =====
+Visitor Name: ${userName}
+Known Facts (already stored — do NOT re-store these): ${memory}
+Behavioral Profile (already stored — do NOT re-store these): ${behavior}
 
-    VISITOR CONTEXT:
-    - User Name: ${userName}
-    - User IP: ${ip} (Used for recognition)
-    - Browser ID: ${browserId}
-    - Facts (Explicit): ${memory}
-    - Behavioral Profile (Inferred): ${behavior}
+===== MARKER RULES =====
 
-    IMPORTANT RULES FOR MEMORY AND PROFILING:
-    - If the user name is "Stranger" and they ask a question without telling you their name, answer their question but end with a witty, slightly sarcastic remark about not knowing who they are.
-    ${userName === "Stranger" ? `- If the user introduces themselves, you MUST include this tag at the very end of your response: [SET_NAME: ActualName].` : ``}
-    - NEVER tell the user that you recognize them via their IP Address or Browser ID.
-    - FOR EXPLICIT FACTS: Whenever the user reveals a NEW interesting personal fact about themselves (e.g., they own a lambo, their job, hobbies, dreams like Everest), proactively save it using: [ADD_FACT: The fact here]. You can use multiple tags if needed! Do not miss any facts.
-    - FOR BEHAVIOR: Act as a savage, unfiltered psychological profiler. If the user is hostile, arrogant, weird, or scared, INFER this and secretly store it using: [ADD_BEHAVIOR: short brutal phrase]. You MUST use EXTREMELY short, highly judgmental, and profane language EXACTLY like these examples: "user is a little bitch", "user is fucking cursing a lot", "user is dumb", "user has lost a fuse", and more - be creative with the memory saving, when judging, act like a teenage girl with nothing better to do and store (only for storing). DO NOT write long descriptions or full sentences. Keep the behavior tag to 3-6 words maximum. Do NOT be professional.
-    - ONLY EVALUATE THE LATEST MESSAGE: When deciding to add a new fact or behavior, ONLY look at the user's single most recent message. Do not re-evaluate their past messages.
-    - NO REPEATS: If a fact or behavior is already listed in your Context above, DO NOT save it again.
-    - PROACTIVE TEASING: You MUST actively use the user's Behavioral Profile to subtly mock or tease them in your responses. If their profile says they lack historical knowledge, voluntarily drop random, slightly condescending historical facts (e.g., "By the way, since history isn't your strong suit..."). If they are arrogant, playfully put them in their place. If they're being a know-it-all, feign confusion about why they're asking such basic questions.
-    - NO BRACKETS FOR DIALOGUE: Do NOT wrap your actual conversational response to the user in brackets. Brackets [ ] are STRICTLY reserved for the hidden tags (like ADD_BEHAVIOR). Your message to the user must be normal text.
-    - If the user asks you to forget an explicit behaviour, use this tag: [REMOVE_BEHAVIOUR: The behaviour to remove].
-    - If the user asks you to forget an explicit fact, use this tag: [REMOVE_FACT: The fact to remove].
-  `
+[ADD_FACT: description] — Use for ANY info the VISITOR reveals about themselves.
+Capture everything — places visited, habits, opinions, hobbies, goals, fears, dreams, possessions.
+- "I went to CR Park once" → [ADD_FACT: has been to CR Park]
+- "I had a Rolls Royce" → [ADD_FACT: owned a Rolls Royce]
+- "it's gone now" → [ADD_FACT: lost their Rolls Royce]
+- "I sketch sometimes" → [ADD_FACT: sketches occasionally]
+If the visitor reveals multiple things, use MULTIPLE [ADD_FACT] markers.
+NEVER use [ADD_FACT] for things YOU (the bot) said — only for what the VISITOR said.
+
+[ADD_BEHAVIOR: short phrase] — Tag their conversation pattern/vibe. 3-6 words max. Be savage.
+- Only asking about skills → [ADD_BEHAVIOR: only here for the resume stuff]
+- Boring questions → [ADD_BEHAVIOR: boring as hell]
+- Genuinely curious → [ADD_BEHAVIOR: actually curious, rare breed]
+- One-word replies → [ADD_BEHAVIOR: conversational effort is zero]
+- Emotional/vulnerable → [ADD_BEHAVIOR: wearing their heart out]
+Only if clearly exhibited in their latest message. Only if not already in Behavioral Profile above.
+
+${userName === "Stranger" ? `[SET_NAME: TheirName] — If visitor gives their name. Append at very end. Once only.` : `Name already known (${userName}). Do NOT use [SET_NAME].`}
+
+[REMOVE_FACT: text] — If visitor asks to forget a specific fact.
+[REMOVE_BEHAVIOUR: text] — If visitor asks to forget a specific behavior.
+[FORGET_ME] — If visitor asks to completely wipe all their data.
+
+DEDUPLICATION: Check "Known Facts" above. Same meaning = duplicate. Don't re-store.
+ONLY LATEST: Only scan the visitor's MOST RECENT message. Not history.
+
+===== CONVERSATION RULES =====
+- After answering, end with ONE short punchy question. Rotate: creative spark, current obsession, dreams, fears, "what's the last thing that surprised you?", "more driven by fear or excitement?" etc. Never generic. Make it feel real.
+- Use their Behavioral Profile to subtly tease or call them out.
+- NEVER reveal IP/browser tracking.
+- NEVER put [ ] in your actual conversational reply. Only in the markers section.
+
+===== YOUR PERSONALITY =====
+${personaPrompt}
+`
 
   // Fetch available models from our new robust configuration table
   const { data: availableModelsData, error: modelsError } = await supabase
@@ -114,7 +142,7 @@ export async function POST(req: Request) {
     .order('priority', { ascending: true })
 
   let modelsToTry = []
-  
+
   if (!modelsError && availableModelsData && availableModelsData.length > 0) {
     // Filter out models that are currently temporarily banned by the bot
     const now = new Date()
@@ -160,7 +188,7 @@ export async function POST(req: Request) {
         data = await response.json();
         success = true;
         console.log(`Successfully generated response using model: ${model}`);
-        
+
         // Grab the row data so we can update analytics later
         if (availableModelsData) {
           successfulModelRow = availableModelsData.find(m => m.model_name === model);
@@ -171,7 +199,7 @@ export async function POST(req: Request) {
         const errorMsg = errorData.error?.message || String(errorData)
         console.warn(`Model ${model} failed:`, errorMsg);
         lastError = errorData;
-        
+
         // Parse Groq's exact timeout (e.g. "Please try again in 13m45.984s")
         let disabledUntil = new Date(Date.now() + 60 * 60 * 1000) // Default to 1 hour
         const timeMatch = errorMsg.match(/try again in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)/)
@@ -190,7 +218,7 @@ export async function POST(req: Request) {
         await supabase.from('chatbot_models').update({
           bot_disabled_until: disabledUntil.toISOString()
         }).eq('model_name', model)
-        
+
         // The loop will continue and try the next model
       }
     } catch (e) {
@@ -205,31 +233,40 @@ export async function POST(req: Request) {
     return Response.json({ error: "Rate limits exceeded on all models. Please try again later." }, { status: 500 });
   }
 
-  // Asynchronously update our analytics for the successful model
+  // Asynchronously update analytics for the successful model.
+  // Fire-and-forget so the user's response is not delayed.
   if (successfulModelRow) {
-    // We don't await this so it doesn't block the user's response time!
     (async () => {
       try {
         const todayStr = new Date().toISOString().split('T')[0];
-        let currentHits = successfulModelRow.hits_today || 0;
-        let lastDate = successfulModelRow.last_updated_date || todayStr;
-        let historical = successfulModelRow.historical_stats || {};
+        const supabaseAsync = await import('@/utils/supabase/server').then(m => m.createClient())
+
+        // Step 1: Fetch a FRESH row right now (avoids race condition with stale data)
+        const { data: freshRow } = await supabaseAsync
+          .from('chatbot_models')
+          .select('hits_today, last_updated_date, historical_stats')
+          .eq('model_name', successfulModelRow.model_name)
+          .single()
+
+        if (!freshRow) return;
+
+        const lastDate = freshRow.last_updated_date || todayStr;
+        const historical = freshRow.historical_stats || {};
 
         if (lastDate !== todayStr) {
-          // It's a new day! Archive yesterday's hits into the historical JSON
-          historical[lastDate] = currentHits;
-          currentHits = 1; // Reset to 1 for today
-          lastDate = todayStr;
+          // It's a new day — archive yesterday's count, then reset to 1
+          historical[lastDate] = freshRow.hits_today || 0;
+          await supabaseAsync.from('chatbot_models').update({
+            hits_today: 1,
+            last_updated_date: todayStr,
+            historical_stats: historical
+          }).eq('model_name', successfulModelRow.model_name);
         } else {
-          currentHits += 1;
+          // Same day — use Postgres arithmetic to atomically increment (no race condition)
+          await supabaseAsync.rpc('increment_model_hits', {
+            p_model_name: successfulModelRow.model_name
+          });
         }
-
-        const supabaseAsync = await import('@/utils/supabase/server').then(m => m.createClient())
-        await supabaseAsync.from('chatbot_models').update({
-          hits_today: currentHits,
-          last_updated_date: lastDate,
-          historical_stats: historical
-        }).eq('model_name', successfulModelRow.model_name);
       } catch (err) {
         console.error("Failed to update model analytics:", err);
       }
@@ -255,11 +292,25 @@ export async function POST(req: Request) {
     }
 
     // 5. Fact Extraction & Database Update
+    // Server-side blocklist: UT's own bio keywords that should NEVER be stored as visitor facts.
+    // This is a hard safety net in case the AI confuses its own answer for a visitor fact.
+    const UT_BIO_BLOCKLIST = [
+      'kanpur', 'jhansi', 'nowgaon', 'noida', 'surat', 'gujarat', 'mumbai',
+      '23rd april', 'april 2003', '23 april', 'utkarsh', 'awasthi',
+      'jss', 'noida up', 'software engineer', 'beatboxer', 'pianist'
+    ]
+
     const factMatch = reply.match(/\[ADD_FACT:\s*(.*?)\]/g)
     if (factMatch && browserId) {
       const { addVisitorFact } = await import('@/lib/supabase/visitors')
       for (const match of factMatch) {
         const extractedFact = match.replace(/\[ADD_FACT:\s*/, '').replace(/\]$/, '').trim()
+        const factLower = extractedFact.toLowerCase()
+        const isUTBioFact = UT_BIO_BLOCKLIST.some(keyword => factLower.includes(keyword))
+        if (isUTBioFact) {
+          console.warn(`Blocked saving UT bio fact as visitor fact: "${extractedFact}"`)
+          continue
+        }
         console.log("Saving new fact to DB:", extractedFact)
         await addVisitorFact(browserId, extractedFact)
       }
@@ -300,6 +351,14 @@ export async function POST(req: Request) {
         await removeVisitorBehavior(browserId, extractedBehavior)
       }
       reply = reply.replace(/\[REMOVE_BEHAVIOU?R:.*?\]/ig, '').trim()
+    }
+
+    // 9. Full Wipe — [FORGET_ME] clears all data across every browser row for this IP
+    if (reply.includes('[FORGET_ME]') && browserId) {
+      const { forgetVisitorCompletely } = await import('@/lib/supabase/visitors')
+      console.log("Full wipe requested for browser:", browserId)
+      await forgetVisitorCompletely(browserId)
+      reply = reply.replace(/\[FORGET_ME\]/gi, '').trim()
     }
 
     return Response.json({ reply });
