@@ -152,7 +152,7 @@ These are the things worth remembering. Not small talk. Only the things that wou
 - Emotional/vulnerable → [ADD_BEHAVIOR: wearing their heart out]
 Only if clearly exhibited in their latest message. Only if not already in Behavioral Profile above.
 
-${userName === "Stranger" ? `[SET_NAME: TheirName] — If visitor gives their name. Append at very end. Once only.
+${userName === "Stranger" ? `[SET_NAME: TheName] — If the visitor gives their name, you MUST use this marker. Replace "TheName" with their actual name (e.g., [SET_NAME: Alex]). DO NOT use [ADD_FACT] for their name. Append at the very end.
 [FAKE_NAME] — If the name they gave is clearly fake, gibberish, a made-up word, a number, a symbol, a celebrity they obviously are not, or a joke name (e.g. "xyzabc", "Batman", "12345", "asdf", "NPC", "uwu"). Use [FAKE_NAME] instead of [SET_NAME]. Do NOT store it.` : `Name already known (${userName}). Do NOT use [SET_NAME] or [FAKE_NAME].`}
 
 [REMOVE_FACT: text] — If visitor asks to forget a specific fact.
