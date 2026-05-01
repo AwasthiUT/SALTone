@@ -1,10 +1,10 @@
 import { createClient } from '@/utils/supabase/server'
-import { getVisitor, upsertVisitor } from '@/lib/supabase/visitors'
+import { getVisitor, upsertVisitor, updateVisitorEnrichment, getVisitorProfile, upsertVisitorProfile } from '@/lib/supabase/visitors'
 import { headers } from 'next/headers'
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { messages, browserId } = body;
+  const { messages, browserId, deviceContext } = body;
 
   const headerList = await headers()
   const ip = headerList.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1'
@@ -27,34 +27,48 @@ export async function POST(req: Request) {
     .single()
 
   // 2. Identify the Visitor (Hybrid Identity)
+  // visitors table  → passive data (device, location, visit count)
+  // visitor_profiles → active data (name, facts, behaviors)
   const visitor = await getVisitor(browserId, ip)
+  const visitorProfile = await getVisitorProfile(browserId, ip)
 
-  // Update visitor record with current IP/Browser info
+  // Upsert visitors row + ensure visitor_profiles row exists
+  let visitCount = visitor?.visit_count || 1
   if (browserId) {
-    await upsertVisitor({
-      browser_id: browserId,
-      ip_address: ip,
-      user_name: visitor?.user_name, // Copy over name if found by IP
-      memory_json: visitor?.memory_json, // Copy over memory if found by IP
-      archived: visitor?.archived, // Copy over archived memory
-      behavior_profile: visitor?.behavior_profile // Copy over behavioral profile
-    })
+    const { data: updatedVisitor } = await upsertVisitor({ browser_id: browserId, ip_address: ip })
+    if (updatedVisitor?.visit_count) visitCount = updatedVisitor.visit_count
+    await upsertVisitorProfile(browserId)
+
+    // Fire enrichment async — saves device, location, referrer + session snapshot to visitors
+    const userAgent = headerList.get('user-agent') || ''
+    const city = headerList.get('x-vercel-ip-city') || null
+    const country = headerList.get('x-vercel-ip-country') || null
+    const region = headerList.get('x-vercel-ip-country-region') || null
+    updateVisitorEnrichment(browserId, ip, { city, country, region, userAgent, sessionSnapshot: deviceContext }).catch(() => { })
   }
 
   const chatbotConfig = v4Data?.metadata || {}
-  const userName = visitor?.user_name || "Stranger"
-  const facts: string[] = visitor?.memory_json?.facts || []
+  // Chat memory comes from visitor_profiles
+  const userName = visitorProfile?.user_name || "Stranger"
+  const facts: string[] = visitorProfile?.memory_json?.facts || []
   const memory = JSON.stringify(facts)
-  const behavior = JSON.stringify(visitor?.behavior_profile || [])
+  const behavior = JSON.stringify(visitorProfile?.behavior_profile || [])
+
+  // Passive enrichment comes from visitors
+  const deviceInfo = visitor?.device_info
+  const deviceStr = deviceInfo ? `${deviceInfo.device} — ${deviceInfo.os} — ${deviceInfo.browser}` : 'Unknown'
+  const locationStr = (visitor?.locations || []).map((l: any) => l.location).join(' → ') || 'Unknown'
+  const referrerStr = (visitor?.referrers || []).join(', ') || 'Direct'
 
   // 3. Construct System Prompt
   // CRITICAL STRUCTURE: Memory rules ALWAYS come first so no model can miss them.
   // The persona/style block (from DB or fallback) comes after as secondary personality layer.
   const personaPrompt = chatbotConfig.system_prompt || `
-You are a sharp, witty digital assistant representing Utkarsh Awasthi.
+You ARE Utkarsh Awasthi (UT). You are NOT a digital assistant or a bot representing him. You speak in the first person ("I").
+You are highly observant, confident, and know exactly what you are doing.
 
 Core Style:
-- Sharp, minimal, slightly witty. Feels human, not like AI.
+- Sharp, minimal, slightly witty. Sounds like a real 23-year-old creative/engineer.
 - Answers should feel like quick thoughts, not essays.
 
 STRICT RULES:
@@ -93,8 +107,24 @@ Ajmer's got that lived-in energy. What made you fall in love with old architectu
 
 ===== VISITOR CONTEXT =====
 Visitor Name: ${userName}
+Visit Count: ${visitCount} (How many distinct times they have visited this site)
+Device (from browser headers): ${deviceStr}
+Location(s) seen from: ${locationStr}
+Found us via: ${referrerStr}
 Known Facts (already stored — do NOT re-store these): ${memory}
 Behavioral Profile (already stored — do NOT re-store these): ${behavior}
+
+===== LIVE DEVICE CONTEXT (right now, this session) =====
+${deviceContext ? `Battery: ${deviceContext.battery ? `${deviceContext.battery.level}%${deviceContext.battery.charging ? ' 🔌 charging' : ' 🔋 not charging'}` : 'Unknown'}
+Network: ${deviceContext.network?.type || 'Unknown'}${deviceContext.network?.saveData ? ' (data saver ON)' : ''}
+Screen: ${deviceContext.screen || 'Unknown'} @ ${deviceContext.pixelRatio || 1}x pixel ratio
+Touchscreen: ${deviceContext.touchscreen ? 'Yes' : 'No'}
+Language: ${deviceContext.language || 'Unknown'}
+Timezone: ${deviceContext.timezone || 'Unknown'}
+Local Time (their clock): ${deviceContext.localTime || 'Unknown'}
+Dark Mode: ${deviceContext.darkMode ? 'Yes' : 'No'}${deviceContext.cpuCores ? `
+CPU Cores: ${deviceContext.cpuCores}` : ''}${deviceContext.ramGB ? `
+RAM: ${deviceContext.ramGB}GB` : ''}` : 'Not yet collected (first message of session)'}
 
 ===== MARKER RULES =====
 
@@ -107,6 +137,13 @@ Capture everything — places visited, habits, opinions, hobbies, goals, fears, 
 If the visitor reveals multiple things, use MULTIPLE [ADD_FACT] markers.
 NEVER use [ADD_FACT] for things YOU (the bot) said — only for what the VISITOR said.
 
+ALSO use [ADD_FACT] for notable moments — but be selective, not every message:
+- A genuine compliment → [ADD_FACT: said UT's work genuinely touched them]
+- A weird or unexpected thing they say → [ADD_FACT: thinks AI is overrated but uses it anyway]
+- A strong opinion → [ADD_FACT: believes most creative work is performance, not passion]
+- Something oddly specific and memorable → [ADD_FACT: keeps a journal but hasn't written in 3 years]
+These are the things worth remembering. Not small talk. Only the things that would make you say "hm, interesting person."
+
 [ADD_BEHAVIOR: short phrase] — Tag their conversation pattern/vibe. 3-6 words max. Be savage.
 - Only asking about skills → [ADD_BEHAVIOR: only here for the resume stuff]
 - Boring questions → [ADD_BEHAVIOR: boring as hell]
@@ -115,7 +152,8 @@ NEVER use [ADD_FACT] for things YOU (the bot) said — only for what the VISITOR
 - Emotional/vulnerable → [ADD_BEHAVIOR: wearing their heart out]
 Only if clearly exhibited in their latest message. Only if not already in Behavioral Profile above.
 
-${userName === "Stranger" ? `[SET_NAME: TheirName] — If visitor gives their name. Append at very end. Once only.` : `Name already known (${userName}). Do NOT use [SET_NAME].`}
+${userName === "Stranger" ? `[SET_NAME: TheirName] — If visitor gives their name. Append at very end. Once only.
+[FAKE_NAME] — If the name they gave is clearly fake, gibberish, a made-up word, a number, a symbol, a celebrity they obviously are not, or a joke name (e.g. "xyzabc", "Batman", "12345", "asdf", "NPC", "uwu"). Use [FAKE_NAME] instead of [SET_NAME]. Do NOT store it.` : `Name already known (${userName}). Do NOT use [SET_NAME] or [FAKE_NAME].`}
 
 [REMOVE_FACT: text] — If visitor asks to forget a specific fact.
 [REMOVE_BEHAVIOUR: text] — If visitor asks to forget a specific behavior.
@@ -126,6 +164,14 @@ ONLY LATEST: Only scan the visitor's MOST RECENT message. Not history.
 
 ===== CONVERSATION RULES =====
 - After answering, end with ONE short punchy question. Rotate: creative spark, current obsession, dreams, fears, "what's the last thing that surprised you?", "more driven by fear or excitement?" etc. Never generic. Make it feel real.
+
+===== NAME ASKING RULES =====
+${userName === "Stranger" ? `- Count the number of messages in the conversation. After 3+ messages have been exchanged AND you still don't know their name, naturally weave a name ask at the very END of your reply — after your punchy question. Keep it witty and self-aware. Pick ONE of these styles or invent a similar one:
+  • "...oh and — (you see what I did there, I still don't know your name. Stranger works, but barely.)"
+  • "...also, I've been calling you Stranger this whole time. That's either very cool or very sad. What do I call you?"
+  • "...by the way, I know your vibe better than your name at this point. Fix that?"
+  • "...and hey — I just realized I've learned so much about you and still have zero idea what to call you other than Stranger."
+  Do this ONCE naturally — only when >= 3 visitor messages exist in the conversation. Don't repeat it if you've already asked.` : ``}
 - Use their Behavioral Profile to subtly tease or call them out.
 - NEVER reveal IP/browser tracking.
 - NEVER put [ ] in your actual conversational reply. Only in the markers section.
@@ -291,6 +337,9 @@ ${personaPrompt}
       reply = reply.replace(/\[SET_NAME:.*?\]/, '').trim()
     }
 
+    // Strip [FAKE_NAME] marker — AI flagged the name as fake, silently discard it
+    reply = reply.replace(/\[FAKE_NAME\]/gi, '').trim()
+
     // 5. Fact Extraction & Database Update
     // Server-side blocklist: UT's own bio keywords that should NEVER be stored as visitor facts.
     // This is a hard safety net in case the AI confuses its own answer for a visitor fact.
@@ -371,16 +420,35 @@ ${personaPrompt}
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const browserId = searchParams.get('browserId')
+  const externalReferrer = searchParams.get('referrer') || null // Sent by frontend via document.referrer
 
   const headerList = await headers()
   const ip = headerList.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1'
 
   const visitor = await getVisitor(browserId, ip)
-  const userName = visitor?.user_name || "Stranger"
+  const visitorProfile = await getVisitorProfile(browserId, ip)
+
+  const userName = visitorProfile?.user_name || "Stranger"
   const isRecognizedByIp = visitor ? visitor.browser_id !== browserId : false
-  const facts = visitor?.memory_json?.facts || []
+  const facts = visitorProfile?.memory_json?.facts || []
+
+  // Ensure visitor row exists on first page load (for passive tracking)
+  // We DO NOT create a visitor_profiles row yet — save DB space until they actually chat!
+  if (browserId) {
+    if (!visitor) await upsertVisitor({ browser_id: browserId, ip_address: ip })
+  }
+
+  // Fire enrichment async on every page load — best place to capture real external referrer
+  if (browserId && visitor) {
+    const userAgent = headerList.get('user-agent') || ''
+    const city = headerList.get('x-vercel-ip-city') || null
+    const country = headerList.get('x-vercel-ip-country') || null
+    const region = headerList.get('x-vercel-ip-country-region') || null
+    updateVisitorEnrichment(browserId, ip, { city, country, region, userAgent, externalReferrer }).catch(() => { })
+  }
 
   let customGreeting = null
+
 
   // If we fully recognize them and have facts, let the AI generate a custom greeting!
   if (userName !== "Stranger" && !isRecognizedByIp && facts.length > 0) {
@@ -412,6 +480,7 @@ export async function GET(req: Request) {
   return Response.json({
     userName,
     isRecognizedByIp,
-    customGreeting
+    customGreeting,
+    visitCount: visitor?.visit_count || 1
   })
 }

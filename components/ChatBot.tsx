@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 const ThinkingStatus = () => {
   const [status, setStatus] = useState('Thinking')
   const statuses = ['Thinking', 'Analyzing', 'Formulating', 'Crafting']
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setStatus(prev => {
@@ -16,7 +16,7 @@ const ThinkingStatus = () => {
     }, 400)
     return () => clearInterval(interval)
   }, [])
-  
+
   return <>{status}</>
 }
 
@@ -35,6 +35,7 @@ export default function ChatBot() {
   const [userName, setUserName] = useState<string>("Stranger")
   const [isRecognizedByIp, setIsRecognizedByIp] = useState(false)
   const [customGreeting, setCustomGreeting] = useState<string | null>(null)
+  const [deviceContext, setDeviceContext] = useState<Record<string, any> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // 1. Initialize Browser ID and Check Identity
@@ -47,8 +48,45 @@ export default function ChatBot() {
     }
     setBrowserId(bid)
 
+      // Collect live device context async (battery, network, timezone, etc.)
+      // Fire-and-forget — sets state when ready, used in every subsequent chat POST
+      ; (async () => {
+        const ctx: Record<string, any> = {}
+
+        // Battery
+        try {
+          const battery = await (navigator as any).getBattery()
+          ctx.battery = { level: Math.round(battery.level * 100), charging: battery.charging }
+        } catch { }
+
+        // Network
+        const conn = (navigator as any).connection
+        if (conn) ctx.network = { type: conn.effectiveType, saveData: !!conn.saveData }
+
+        // Screen
+        ctx.screen = `${window.screen.width}x${window.screen.height}`
+        ctx.pixelRatio = window.devicePixelRatio
+        ctx.touchscreen = navigator.maxTouchPoints > 0
+
+        // Language, Timezone, Local Time
+        ctx.language = navigator.language
+        ctx.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        ctx.localTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+
+        // Preferences
+        ctx.darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+
+        // Hardware (not all browsers expose these)
+        if ((navigator as any).hardwareConcurrency) ctx.cpuCores = (navigator as any).hardwareConcurrency
+        if ((navigator as any).deviceMemory) ctx.ramGB = (navigator as any).deviceMemory
+
+        setDeviceContext(ctx)
+      })()
+
     // Fetch identity based on browser ID or IP
-    fetch(`/api/chat?browserId=${bid}`)
+    // Pass document.referrer so the backend knows if they came from Instagram, LinkedIn, etc.
+    const referrer = encodeURIComponent(document.referrer || '')
+    fetch(`/api/chat?browserId=${bid}&referrer=${referrer}`)
       .then(res => res.json())
       .then(data => {
         if (data.userName) setUserName(data.userName)
@@ -87,7 +125,7 @@ export default function ChatBot() {
 
     const userMessage: Message = { role: 'user', content: messageToSend }
     const updatedMessages = [...messages, userMessage]
-    
+
     if (!overrideMessage) setInput('')
     setMessages(updatedMessages)
     setIsLoading(true)
@@ -97,9 +135,10 @@ export default function ChatBot() {
       const responsePromise = fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           messages: updatedMessages,
-          browserId: browserId 
+          browserId: browserId,
+          deviceContext: deviceContext // Live device data (battery, network, timezone, etc.)
         }),
       })
 
@@ -158,14 +197,14 @@ export default function ChatBot() {
               </div>
               <div className="flex items-center gap-3">
                 {messages.length > 0 && (
-                  <button 
+                  <button
                     onClick={clearHistory}
                     className="text-[9px] uppercase tracking-tighter text-white/20 hover:text-red-400 transition-colors"
                   >
                     Clear
                   </button>
                 )}
-                <button 
+                <button
                   onClick={() => setIsOpen(false)}
                   className="text-white/40 hover:text-white transition-colors"
                 >
@@ -177,7 +216,7 @@ export default function ChatBot() {
             </div>
 
             {/* Messages */}
-            <div 
+            <div
               ref={scrollRef}
               className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide"
             >
@@ -189,29 +228,29 @@ export default function ChatBot() {
 
               <AnimatePresence>
                 {showWelcome && messages.length === 0 && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-4"
                   >
                     <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                       <p className="text-xs text-white/80 leading-relaxed mb-3 font-medium">
-                        {userName === "Stranger" 
-                          ? "Hey! I'm UT's digital shadow. What's your name?"
-                          : isRecognizedByIp 
-                            ? `You look familiar... are you ${userName}?` 
-                            : customGreeting 
-                              ? customGreeting 
+                        {userName === "Stranger"
+                          ? "I am UT, I remember the things that he actually forgets. what's your name? (try me)"
+                          : isRecognizedByIp
+                            ? `You look familiar... are you ${userName}?`
+                            : customGreeting
+                              ? customGreeting
                               : `Welcome back, ${userName}. Good to see you again.`}
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {(userName === "Stranger" 
-                          ? ['I prefer to stay anonymous', 'Who are you?']
+                        {(userName === "Stranger"
+                          ? ["I'm nobody special", "Ask me something weird"]
                           : isRecognizedByIp
                             ? ['Yes, that is me!', 'No, I am someone else']
                             : ['What are you working on?', 'Tell me a secret']
                         ).map(q => (
-                          <button 
+                          <button
                             key={q}
                             onClick={() => handleSend(q)}
                             className="text-[10px] bg-white/10 hover:bg-white/20 text-white/60 px-3 py-1.5 rounded-full border border-white/5 transition-colors"
@@ -227,11 +266,10 @@ export default function ChatBot() {
 
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
-                    m.role === 'user' 
-                      ? 'bg-white/10 text-white border border-white/5' 
-                      : 'bg-white/5 text-white/80 border border-white/5'
-                  }`}>
+                  <div className={`max-w-[80%] rounded-xl px-3 py-2 text-xs leading-relaxed ${m.role === 'user'
+                    ? 'bg-white/10 text-white border border-white/5'
+                    : 'bg-white/5 text-white/80 border border-white/5'
+                    }`}>
                     {m.content}
                   </div>
                 </div>
@@ -246,7 +284,7 @@ export default function ChatBot() {
                         <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="h-1 w-1 rounded-full bg-white/40" />
                         <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="h-1 w-1 rounded-full bg-white/40" />
                       </div>
-                      <motion.span 
+                      <motion.span
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className="text-[8px] uppercase tracking-[0.2em] text-white/20 font-bold"
@@ -262,7 +300,7 @@ export default function ChatBot() {
             {/* Input */}
             <div className="p-4 border-t border-white/10 bg-white/5">
               <div className="relative flex items-center">
-                <input 
+                <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -270,7 +308,7 @@ export default function ChatBot() {
                   placeholder="Type a message..."
                   className="w-full bg-white/5 border border-white/10 rounded-full px-4 py-2 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 transition-colors"
                 />
-                <button 
+                <button
                   onClick={() => handleSend()}
                   disabled={isLoading}
                   className="absolute right-2 text-white/40 hover:text-white transition-colors disabled:opacity-50"
