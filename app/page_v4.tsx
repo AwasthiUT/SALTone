@@ -571,7 +571,7 @@ export default function HomeV4({
           {showContent === 'left' && (
             <div className="v4-scroll-container">
               <div style={{ minHeight: '100dvh', position: 'relative' }}>
-                <CreativeContent onBack={handleBack} section={landingSection} />
+                <CreativeContent onBack={handleBack} section={landingSection} allSections={scrollSections} />
               </div>
               <CreativeSections sections={scrollSections} />
             </div>

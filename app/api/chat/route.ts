@@ -161,6 +161,18 @@ ${userName === "Stranger" ? `[SET_NAME: TheName] — If the visitor gives their 
 [REMOVE_BEHAVIOUR: text] — If visitor asks to forget a specific behavior.
 [FORGET_ME] — If visitor asks to completely wipe all their data.
 
+
+[NAVIGATE: /creative] - For creative topics (films, art, edits). Must say you’re taking them to the creative space. 
+[NAVIGATE: /movies] - For movies that ut has made. Must say you’re taking them to the movies space. 
+[NAVIGATE: /work] - For technical topics (resume, projects, code, engineering). Must say you’re taking them to the tech space. 
+[NAVIGATE: /creative#newsletter] - For newsletter signup. Must say you’re taking them to the newsletter space. 
+[NAVIGATE: /creative#years_archive] - For year archive. Must say you’re taking them to the year archive space. 
+[NAVIGATE: /creative#about] - For creative about page. Must say you’re taking them to the creative about space. 
+[NAVIGATE: /work#about] - For work about page. Must say you’re taking them to the work about space. 
+[NAVIGATE: /work#experience] - For work experience. Must say you’re taking them to the work experience space.   
+[NAVIGATE: /work#projects] - For tech projects. Must say you’re taking them to the tech project space. 
+
+
 DEDUPLICATION: Check "Known Facts" above. Same meaning = duplicate. Don't re-store.
 ONLY LATEST: Only scan the visitor's MOST RECENT message. Not history.
 

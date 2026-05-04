@@ -84,7 +84,11 @@ export default function CreativeWorldClient({ sections }: { sections: CreativeSe
             <source src={mediaUrl} type="video/mp4" />
           </video>
         )}
-        {landingSection ? <CreativeContent section={landingSection} /> : <CreativeContent />}
+        {landingSection ? (
+          <CreativeContent section={landingSection} allSections={scrollSections} />
+        ) : (
+          <CreativeContent allSections={scrollSections} />
+        )}
       </div>
 
       {/* ── Scroll down: all creative sections ── */}

@@ -36,7 +36,7 @@ function renderLandingTitle(title: string) {
   ))
 }
 
-export default function CreativeContent({ onBack, section }: { onBack?: () => void; section?: CreativeSection }) {
+export default function CreativeContent({ onBack, section, allSections = [] }: { onBack?: () => void; section?: CreativeSection; allSections?: CreativeSection[] }) {
   const router = useRouter()
   const [hoveredYear, setHoveredYear] = useState<string | null>(null)
   // Archive section might use 'items' or 'boxes'. We check both.
@@ -166,7 +166,7 @@ export default function CreativeContent({ onBack, section }: { onBack?: () => vo
             lineHeight: 1.7,
             color: 'rgba(255,255,255,0.55)',
             maxWidth: '42ch',
-            marginBottom: '3.5rem',
+            marginBottom: '3rem',
           }}
         >
           {section?.subtitle ?? (
@@ -176,6 +176,38 @@ export default function CreativeContent({ onBack, section }: { onBack?: () => vo
             </>
           )}
         </motion.p>
+
+        {/* Section Navigation */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.45 }}
+          style={{ display: 'flex', gap: '2rem', marginBottom: '3.5rem', flexWrap: 'wrap' }}
+        >
+          {allSections.map((s, idx) => {
+            const label = s.section_key?.replace(/-/g, ' ') || 'section';
+            return (
+              <a key={s.section_key} href={`#${s.section_key}`}
+                className="group"
+                style={{ 
+                  fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', 
+                  color: 'rgba(255,255,255,0.4)', textDecoration: 'none', 
+                  fontFamily: FONT_UI, fontWeight: 600, transition: 'all 0.3s ease', 
+                  display: 'flex', alignItems: 'center', gap: '0.4rem' 
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = '#ffffff';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.4)';
+                }}>
+                <span style={{ opacity: 0.3, fontSize: '0.6rem', fontFamily: 'monospace' }}>0{idx + 1}</span>
+                {label}
+                <span style={{ transition: 'transform 0.3s ease', opacity: 0.3 }} className="group-hover:translate-y-0.5">↓</span>
+              </a>
+            )
+          })}
+        </motion.div>
 
         {/* Year grid */}
         <motion.div

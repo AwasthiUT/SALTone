@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 
 const ThinkingStatus = () => {
   const [status, setStatus] = useState('Thinking')
@@ -37,6 +38,7 @@ export default function ChatBot() {
   const [customGreeting, setCustomGreeting] = useState<string | null>(null)
   const [deviceContext, setDeviceContext] = useState<Record<string, any> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   // 1. Initialize Browser ID and Check Identity
   useEffect(() => {
@@ -165,7 +167,22 @@ export default function ChatBot() {
       const data = await response.json()
 
       if (data.reply) {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
+        let replyText = data.reply;
+        
+        // Handle navigation commands embedded in the response
+        const navMatch = replyText.match(/\[NAVIGATE:\s*(.*?)\]/);
+        if (navMatch) {
+          const navPath = navMatch[1];
+          // Remove the marker from the text shown to the user
+          replyText = replyText.replace(/\[NAVIGATE:.*?\]/g, '').trim();
+          
+          // Execute navigation after a tiny delay so it feels natural
+          setTimeout(() => {
+             router.push(navPath);
+          }, 1500);
+        }
+
+        setMessages(prev => [...prev, { role: 'assistant', content: replyText }])
       } else if (data.error) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error}` }])
       }
