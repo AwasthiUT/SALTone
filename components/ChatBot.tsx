@@ -116,6 +116,21 @@ export default function ChatBot() {
     }
   }, [messages])
 
+  // Handle mobile keyboard opening (visual viewport shrinks)
+  useEffect(() => {
+    const handleResize = () => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    window.visualViewport?.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.visualViewport?.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
   const handleSend = async (overrideMessage?: string) => {
     const messageToSend = overrideMessage || input.trim()
     if (!messageToSend || isLoading) return
@@ -180,14 +195,14 @@ export default function ChatBot() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100]">
+    <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="mb-4 flex h-[450px] w-[350px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/80 shadow-2xl backdrop-blur-xl"
+            className="mb-4 flex h-[450px] max-h-[calc(100dvh-100px)] w-[calc(100vw-48px)] sm:w-[350px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/80 shadow-2xl backdrop-blur-xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-white/5">

@@ -9,9 +9,11 @@ export async function POST(req: Request) {
   const headerList = await headers()
   const ip = headerList.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1'
 
-  if (!process.env.GROQ_API_KEY) {
-    return Response.json({ error: "GROQ_API_KEY is not set in environment variables." }, { status: 500 });
+  const rawKeys = process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY;
+  if (!rawKeys) {
+    return Response.json({ error: "GROQ_API_KEY or GROQ_API_KEYS is not set in environment variables." }, { status: 500 });
   }
+  const apiKeys = rawKeys.split(',').map(k => k.trim()).filter(k => k);
 
   if (!messages || !Array.isArray(messages)) {
     return Response.json({ error: "Messages array is required." }, { status: 400 });
@@ -208,69 +210,104 @@ ${personaPrompt}
   let success = false;
   let lastError = null;
   let successfulModelRow = null;
+  let successfulAccountIndex = 1;
 
   for (const model of modelsToTry) {
-    try {
-      console.log(`Attempting to use model: ${model}`)
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            {
-              role: "system",
-              content: systemPrompt
-            },
-            ...messages
-          ]
-        })
-      });
+    let modelRateLimitedAllKeys = false;
+    let maxDisabledUntil = new Date(0);
 
-      if (response.ok) {
-        data = await response.json();
-        success = true;
-        console.log(`Successfully generated response using model: ${model}`);
+    let modelRow = null;
+    if (availableModelsData) {
+      modelRow = availableModelsData.find(m => m.model_name === model);
+    }
 
-        // Grab the row data so we can update analytics later
-        if (availableModelsData) {
-          successfulModelRow = availableModelsData.find(m => m.model_name === model);
-        }
-        break; // Stop looping, we got a successful response!
-      } else {
-        const errorData = await response.json();
-        const errorMsg = errorData.error?.message || String(errorData)
-        console.warn(`Model ${model} failed:`, errorMsg);
-        lastError = errorData;
+    for (let i = 0; i < apiKeys.length; i++) {
+      const apiKey = apiKeys[i];
+      const accountIndex = i + 1; // 1 for first account, 2 for second
 
-        // Parse Groq's exact timeout (e.g. "Please try again in 13m45.984s")
-        let disabledUntil = new Date(Date.now() + 60 * 60 * 1000) // Default to 1 hour
-        const timeMatch = errorMsg.match(/try again in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)/)
-        if (timeMatch) {
-          const hours = parseInt(timeMatch[1] || '0')
-          const minutes = parseInt(timeMatch[2] || '0')
-          const seconds = parseFloat(timeMatch[3] || '0')
-          const msToAdd = (hours * 3600 + minutes * 60 + seconds) * 1000
-          disabledUntil = new Date(Date.now() + msToAdd)
-          console.log(`Parsed timeout for ${model}. Disabling until ${disabledUntil.toISOString()}`)
-        } else if (errorMsg.includes('decommissioned') || errorMsg.includes('does not exist')) {
-          disabledUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-        }
-
-        // Auto-ban the model by setting bot_disabled_until
-        await supabase.from('chatbot_models').update({
-          bot_disabled_until: disabledUntil.toISOString()
-        }).eq('model_name', model)
-
-        // The loop will continue and try the next model
+      // Skip if this account is turned off for this model in the database
+      if (modelRow) {
+        if (accountIndex === 1 && modelRow.account1_active === false) continue;
+        if (accountIndex === 2 && modelRow.account2_active === false) continue;
       }
-    } catch (e) {
-      console.warn(`Network error with model ${model}:`, e);
-      lastError = e;
-      // The loop will continue and try the next model
+
+      try {
+        console.log(`Attempting to use model: ${model}`)
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              {
+                role: "system",
+                content: systemPrompt
+              },
+              ...messages
+            ]
+          })
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          success = true;
+          console.log(`Successfully generated response using model: ${model}`);
+
+          // Grab the row data so we can update analytics later
+          if (availableModelsData) {
+            successfulModelRow = availableModelsData.find(m => m.model_name === model);
+          }
+          successfulAccountIndex = accountIndex;
+          break; // Stop looping keys, we got a successful response!
+        } else {
+          const errorData = await response.json();
+          const errorMsg = errorData.error?.message || String(errorData)
+          console.warn(`Model ${model} failed on a key:`, errorMsg);
+          lastError = errorData;
+
+          // Parse Groq's exact timeout (e.g. "Please try again in 13m45.984s")
+          let disabledUntil = new Date(Date.now() + 60 * 60 * 1000) // Default to 1 hour
+          const timeMatch = errorMsg.match(/try again in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)/)
+
+          if (timeMatch || errorMsg.toLowerCase().includes('rate limit')) {
+            if (timeMatch) {
+              const hours = parseInt(timeMatch[1] || '0')
+              const minutes = parseInt(timeMatch[2] || '0')
+              const seconds = parseFloat(timeMatch[3] || '0')
+              const msToAdd = (hours * 3600 + minutes * 60 + seconds) * 1000
+              disabledUntil = new Date(Date.now() + msToAdd)
+              console.log(`Parsed timeout for ${model}. Disabling until ${disabledUntil.toISOString()}`)
+            }
+            if (disabledUntil > maxDisabledUntil) maxDisabledUntil = disabledUntil;
+          } else if (errorMsg.includes('decommissioned') || errorMsg.includes('does not exist')) {
+            disabledUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+            if (disabledUntil > maxDisabledUntil) maxDisabledUntil = disabledUntil;
+            modelRateLimitedAllKeys = true;
+            break; // No point trying other keys if model is decommissioned
+          }
+
+          // Loop will continue and try the next key
+        }
+      } catch (e) {
+        console.warn(`Network error with model ${model} on current key:`, e);
+        lastError = e;
+        // Loop will continue and try the next key
+      }
+    }
+
+    if (success) break; // Break model loop if we succeeded with any key
+
+    // If we failed with all keys for this model, auto-ban it using the highest timeout found
+    if (maxDisabledUntil > new Date(0) || modelRateLimitedAllKeys) {
+      if (maxDisabledUntil.getTime() === 0) {
+        maxDisabledUntil = new Date(Date.now() + 60 * 60 * 1000); // Default 1 hour fallback
+      }
+      await supabase.from('chatbot_models').update({
+        bot_disabled_until: maxDisabledUntil.toISOString()
+      }).eq('model_name', model)
     }
   }
 
@@ -290,7 +327,7 @@ ${personaPrompt}
         // Step 1: Fetch a FRESH row right now (avoids race condition with stale data)
         const { data: freshRow } = await supabaseAsync
           .from('chatbot_models')
-          .select('hits_today, last_updated_date, historical_stats')
+          .select('hits_today, last_updated_date, historical_stats, account1_hits, account2_hits')
           .eq('model_name', successfulModelRow.model_name)
           .single()
 
@@ -300,17 +337,24 @@ ${personaPrompt}
         const historical = freshRow.historical_stats || {};
 
         if (lastDate !== todayStr) {
-          // It's a new day — archive yesterday's count, then reset to 1
-          historical[lastDate] = freshRow.hits_today || 0;
+          // It's a new day — archive yesterday's counts, then reset
+          historical[lastDate] = {
+            hits: freshRow.hits_today || 0,
+            firstone_hits: freshRow.account1_hits || 0,
+            secondone_hits: freshRow.account2_hits || 0
+          };
           await supabaseAsync.from('chatbot_models').update({
             hits_today: 1,
+            account1_hits: successfulAccountIndex === 1 ? 1 : 0,
+            account2_hits: successfulAccountIndex === 2 ? 1 : 0,
             last_updated_date: todayStr,
             historical_stats: historical
           }).eq('model_name', successfulModelRow.model_name);
         } else {
           // Same day — use Postgres arithmetic to atomically increment (no race condition)
-          await supabaseAsync.rpc('increment_model_hits', {
-            p_model_name: successfulModelRow.model_name
+          await supabaseAsync.rpc('increment_account_hits', {
+            p_model_name: successfulModelRow.model_name,
+            p_account_index: successfulAccountIndex
           });
         }
       } catch (err) {
