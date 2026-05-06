@@ -27,14 +27,14 @@ export default function MoviesUI({ movies }: Props) {
 
       {/* BACK BUTTON */}
       <div className="absolute top-6 left-6 sm:top-8 sm:left-8 z-50">
-        <Link
-          href="/"
+        <button
+          onClick={() => router.back()}
           className="group flex items-center gap-3 px-5 py-2.5 bg-black/50 hover:bg-white/10 rounded-full backdrop-blur-md border border-white/10 hover:border-white/30 transition-all duration-300 text-white uppercase text-[10px] sm:text-xs tracking-[0.2em] w-fit"
           style={{ fontFamily: 'HelveticaBold' }}
         >
           <span className="group-hover:-translate-x-1 transition-transform duration-300 inline-block">←</span>
           {/* <span>Return to Showcase</span> */}
-        </Link>
+        </button>
       </div>
 
       {/* HEADER */}

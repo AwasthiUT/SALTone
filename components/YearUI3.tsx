@@ -266,14 +266,14 @@ export default function YearUI3({ yearData, events }: Props) {
       {/* HEADER OVERLAY */}
       <div className="absolute top-0 left-0 w-full z-40 pointer-events-none p-6 sm:p-10 flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div className="pointer-events-auto mb-4 sm:mb-0">
-          <Link
-            href="/"
+          <button
+            onClick={() => router.back()}
             className="group flex items-center gap-3 px-5 py-2.5 bg-white/50 hover:bg-black/5 rounded-full backdrop-blur-md border border-black/10 hover:border-black/30 transition-all duration-300 text-black uppercase text-[10px] sm:text-xs tracking-[0.2em] w-fit"
             style={{ fontFamily: 'HelveticaBold' }}
           >
             <span className="group-hover:-translate-x-1 transition-transform duration-300 inline-block">←</span>
             <span>All Archives</span>
-          </Link>
+          </button>
         </div>
         {yearData.year_stamp_present && (
           <h1

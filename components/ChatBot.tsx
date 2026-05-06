@@ -37,6 +37,8 @@ export default function ChatBot() {
   const [isRecognizedByIp, setIsRecognizedByIp] = useState(false)
   const [customGreeting, setCustomGreeting] = useState<string | null>(null)
   const [deviceContext, setDeviceContext] = useState<Record<string, any> | null>(null)
+  const [showHint, setShowHint] = useState(false)
+  const [isShaking, setIsShaking] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -110,6 +112,25 @@ export default function ChatBot() {
     }
   }, [isOpen, messages.length])
 
+  // 3. Shake and Hint Logic (2 seconds after mount)
+  useEffect(() => {
+    let hideTimer: NodeJS.Timeout;
+    const timer = setTimeout(() => {
+      setIsShaking(true)
+      setShowHint(true)
+
+      hideTimer = setTimeout(() => {
+        setIsShaking(false)
+        setShowHint(false)
+      }, 2000)
+    }, 2000)
+
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(hideTimer)
+    }
+  }, [])
+
   // We no longer save history to localStorage here
 
   useEffect(() => {
@@ -168,17 +189,17 @@ export default function ChatBot() {
 
       if (data.reply) {
         let replyText = data.reply;
-        
+
         // Handle navigation commands embedded in the response
         const navMatch = replyText.match(/\[NAVIGATE:\s*(.*?)\]/);
         if (navMatch) {
           const navPath = navMatch[1];
           // Remove the marker from the text shown to the user
           replyText = replyText.replace(/\[NAVIGATE:.*?\]/g, '').trim();
-          
+
           // Execute navigation after a tiny delay so it feels natural
           setTimeout(() => {
-             router.push(navPath);
+            router.push(navPath);
           }, 1500);
         }
 
@@ -355,10 +376,26 @@ export default function ChatBot() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showHint && !isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.8 }}
+            animate={{ opacity: 1, x: -20, y: 0, scale: 1.3 }}
+            exit={{ opacity: 0, y: 5, scale: 0.9 }}
+            className="absolute bottom-16 right-0 mb-2 w-max max-w-[200px] rounded-xl bg-white text-black px-4 py-2 text-xs font-medium shadow-2xl"
+          >
+            Ask me anything weird about Utkarsh!
+            <div className="absolute -bottom-1.5 right-5 h-3 w-3 rotate-45 bg-white"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.button
+        animate={isShaking ? { rotate: [0, -15, 15, -15, 15, 0] } : undefined}
+        transition={isShaking ? { duration: 0.5, repeat: Infinity } : undefined}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => { setIsOpen(!isOpen); setShowHint(false); setIsShaking(false); }}
         className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-black shadow-xl hover:bg-white/90 transition-colors"
       >
         {isOpen ? (
