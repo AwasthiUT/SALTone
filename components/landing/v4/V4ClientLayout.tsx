@@ -90,10 +90,9 @@ export default function HomeV4() {
   }
 
   const handleBack = () => {
-    window.history.pushState(null, '', '/')
-    setShowContent(null)
-    setSelected(null)
-    animating.current = false
+    // Use history.back() so the browser pops the stack (/ → /creative → back to /)
+    // The popstate listener below catches this and resets state
+    window.history.back()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, side: 'left' | 'right') => {
