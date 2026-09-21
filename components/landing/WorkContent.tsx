@@ -128,15 +128,20 @@ export default function WorkContent({ onBack, sections = [] }: { onBack?: () => 
                     </p>
                     <div style={{ display: 'flex', gap: '2rem', marginTop: '4.5rem', flexWrap: 'wrap' }}>
                       {['experience', 'projects', 'stack', 'contact'].map((anchor, idx) => (
-                        <a key={anchor} href={`#${anchor}`} 
+                        <button key={anchor}
                           className="group"
-                          style={{ fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.5)', textDecoration: 'none', fontFamily: FONT_UI, fontWeight: 600, transition: 'color 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const el = document.getElementById(anchor);
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
+                          style={{ fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.5)', textDecoration: 'none', fontFamily: FONT_UI, fontWeight: 600, transition: 'color 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                           onMouseEnter={e => (e.currentTarget.style.color = '#111111')}
                           onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,0,0,0.5)')}>
                           <span style={{ fontFamily: FONT_MONO, opacity: 0.5, fontSize: '0.65rem' }}>0{idx + 1}</span>
                           {anchor} 
                           <span style={{ transition: 'transform 0.3s ease', opacity: 0.5 }} className="group-hover:translate-y-1">↓</span>
-                        </a>
+                        </button>
                       ))}
                     </div>
                   </motion.header>

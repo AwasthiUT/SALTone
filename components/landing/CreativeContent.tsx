@@ -187,13 +187,20 @@ export default function CreativeContent({ onBack, section, allSections = [] }: {
           {allSections.map((s, idx) => {
             const label = s.section_key?.replace(/-/g, ' ') || 'section';
             return (
-              <a key={s.section_key} href={`#${s.section_key}`}
+              <button
+                key={s.section_key}
                 className="group"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const el = document.getElementById(s.section_key ?? '');
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
                 style={{ 
                   fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', 
                   color: 'rgba(255,255,255,0.4)', textDecoration: 'none', 
                   fontFamily: FONT_UI, fontWeight: 600, transition: 'all 0.3s ease', 
-                  display: 'flex', alignItems: 'center', gap: '0.4rem' 
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.color = '#ffffff';
@@ -204,7 +211,7 @@ export default function CreativeContent({ onBack, section, allSections = [] }: {
                 <span style={{ opacity: 0.3, fontSize: '0.6rem', fontFamily: 'monospace' }}>0{idx + 1}</span>
                 {label}
                 <span style={{ transition: 'transform 0.3s ease', opacity: 0.3 }} className="group-hover:translate-y-0.5">↓</span>
-              </a>
+              </button>
             )
           })}
         </motion.div>
